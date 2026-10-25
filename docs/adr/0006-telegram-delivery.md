@@ -22,6 +22,9 @@ erros permanentes/transitórios. O token é um segredo.
 ## Decisão
 
 - `sendMessage` com `parse_mode=HTML`, `disable_web_page_preview=true`.
+- Gráficos opcionais via `sendPhoto` (PNG local, legenda ≤1024 unidades
+  UTF-16); o arquivo de mídia é referenciado no outbox e removido após
+  sucesso/falha permanente. Texto continua sendo o fallback.
 - Mensagem dividida em chunks ≤4096 unidades UTF-16, preferindo limites de
   linha; IDs `<eventID>-<chunk>` persistidos no outbox.
 - Outbox durável: criado na mesma transação do evento/snapshot; worker separado

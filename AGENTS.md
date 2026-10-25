@@ -135,9 +135,14 @@ não significa eleito.
 - Deduplicação lógica por `ChangeSet.EventID()`; outbox com IDs
   `<eventID>-<chunk>`.
 - Semântica **at-least-once**; não prometa exactly-once.
-- Limite Telegram: 4096 unidades UTF-16; use `telegram.SplitMessage`.
-- Ao mudar o formato, adicione/ajuste testes de conteúdo e divisão.
-- Nunca inclua token em texto, log, erro ou estado.
+- Limite Telegram: 4096 unidades UTF-16 para texto e 1024 para legenda de
+  foto; use `telegram.SplitMessage`/`SendPhoto`.
+- `TELEGRAM_CHARTS` gera PNG; `TELEGRAM_MAPS` usa a malha oficial do IBGE e os
+  27 arquivos de UF para colorir o mapa. O mapa é derivado dos totais oficiais,
+  não é projeção; UFs sem dados ficam cinza.
+- O link da mensagem é sempre a página humana do TSE, nunca o JSON.
+- Ao mudar o formato, adicione/ajuste testes de conteúdo, divisão, foto e mapa.
+- Nunca inclua token em texto, log, erro, mídia ou estado.
 
 ## 8. Persistência
 

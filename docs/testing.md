@@ -98,7 +98,7 @@ estado e o log registrou `notificação enviada ao Telegram`.
 | `docker build -t urna-watch:local .` | OK |
 | container non-root com volume nomeado | `/healthz` 200; estado `0600`; snapshot 3948414 |
 | TUI em PTY (`script`) | renderizou candidatos/painéis sem panic |
-| smoke real TSE + Telegram | linha de base entregue; estado `sent` |
+| smoke real TSE + Telegram | linha de base e atualizações entregues; mapa enviado via `sendPhoto`; estado `sent` |
 
 O smoke real usou a fonte oficial e um grupo privado; o token/chat id **não**
 foram registrados no repositório. A mensagem foi confirmada pelo log
