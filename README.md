@@ -168,7 +168,8 @@ Ver no site do TSE
   gráfico de barras; sem votos, usa texto.
 - Se a legenda exceder 1024 unidades UTF-16, o app envia texto normal.
 - `TELEGRAM_CHARTS=false` desabilita imagens; `TELEGRAM_MAPS=false` mantém o
-  gráfico de barras, mas não busca as 27 UFs.
+  gráfico de barras no Telegram, sem buscar as 27 UFs para ele. O mapa da TUI
+  (`m`) é independente e continua disponível sob demanda.
 - O mapa busca os arquivos oficiais das 27 UFs com concorrência limitada, cache
   de 60s e ETag. Estados sem votos ficam cinza; pode haver defasagem entre UFs.
 
@@ -185,14 +186,15 @@ OK · coleta há 12s · próxima há 1m48s · HTTP 304 · Telegram em dia
 - `enter`: detalhes do candidato/evento
 - `u`: abrir a **visão por UF** (eleição federal)
 - `b`: voltar ao consolidado Brasil
+- `m`: abrir o **mapa do Brasil por UF vencedora** no terminal
 - `p`: pausar/retomar polling
 - `r`: atualização imediata
 - `h`/`?`: ajuda
 - `q`: sair
 - Mouse: clique nas linhas e use a roda para rolar.
 
-A escolha de UF é feita **na própria TUI** (tecla `u`), sem variável de
-ambiente. A visão por UF é carregada sob demanda do arquivo oficial da UF, é somente
+A escolha de UF e o mapa são feitos **na própria TUI** (`u` e `m`), sem
+variável de ambiente. A visão por UF é carregada sob demanda do arquivo oficial da UF, é somente
 leitura e **não** altera a linha de base, os eventos nem as notificações do
 consolidado Brasil. Ela pode ficar defasada em relação ao consolidado; o painel
 mostra o horário da carga e a fonte.

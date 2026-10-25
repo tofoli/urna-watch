@@ -21,6 +21,7 @@ type fakeSource struct {
 	refreshed  int
 	selectedUF string
 	clearUF    int
+	mapLoads   int
 }
 
 func (f *fakeSource) Status() observability.Status { return f.st }
@@ -29,6 +30,7 @@ func (f *fakeSource) Resume()                      { f.resumed++ }
 func (f *fakeSource) Refresh()                     { f.refreshed++ }
 func (f *fakeSource) SelectUF(uf string)           { f.selectedUF = uf }
 func (f *fakeSource) ClearUF()                     { f.clearUF++; f.selectedUF = "" }
+func (f *fakeSource) LoadMap()                     { f.mapLoads++ }
 
 func uiSnapshot() *domain.Snapshot {
 	info := domain.ElectionInfo{
@@ -295,5 +297,36 @@ func TestUFSelectorAndUFView(t *testing.T) {
 	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
 	if src.clearUF != 1 {
 		t.Fatalf("clearUF = %d", src.clearUF)
+	}
+}
+
+func TestMapView(t *testing.T) {
+	m, src := newFakeModel()
+	m.View()
+	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+	if !m.showMap {
+		t.Fatal("map view did not open")
+	}
+	if src.mapLoads != 1 {
+		t.Fatalf("loadMap = %d", src.mapLoads)
+	}
+	if !strings.Contains(m.View(), "MAPA") || !strings.Contains(m.View(), "carregando") {
+		t.Fatalf("loading map view:\n%s", m.View())
+	}
+	src.st.Map = &observability.MapView{
+		FetchedAt: time.Now(),
+		States: map[string]observability.MapState{
+			"sp": {UF: "SP", Counted: true, WinnerNumber: "13", PercentText: "60,00"},
+			"rj": {UF: "RJ", Counted: true, WinnerNumber: "22", PercentText: "55,00"},
+		},
+	}
+	m.Update(tickMsg(time.Now()))
+	view := m.View()
+	if !strings.Contains(view, "MAPA") || !strings.Contains(view, "LULA") || !strings.Contains(view, "FLAVIO BOLSONARO") {
+		t.Fatalf("map legend missing:\n%s", view)
+	}
+	m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if m.showMap {
+		t.Fatal("map view did not close")
 	}
 }

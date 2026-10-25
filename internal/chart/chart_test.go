@@ -108,3 +108,24 @@ func TestBrazilMapHasAllStates(t *testing.T) {
 		t.Fatalf("states = %d", len(shapes))
 	}
 }
+
+func TestRasterStates(t *testing.T) {
+	grid, err := RasterStates(100, 60)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(grid) != 60 || len(grid[0]) != 100 {
+		t.Fatalf("grid = %dx%d", len(grid[0]), len(grid))
+	}
+	seen := map[string]bool{}
+	for _, row := range grid {
+		for _, uf := range row {
+			if uf != "" {
+				seen[uf] = true
+			}
+		}
+	}
+	if len(seen) < 22 {
+		t.Fatalf("only %d UFs visible at 100x60: %v", len(seen), seen)
+	}
+}

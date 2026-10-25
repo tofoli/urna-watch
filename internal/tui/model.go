@@ -4,10 +4,12 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/gpu/urna-watch/internal/chart"
 	"github.com/gpu/urna-watch/internal/config"
 	"github.com/gpu/urna-watch/internal/domain"
 	"github.com/gpu/urna-watch/internal/observability"
@@ -22,6 +24,7 @@ type Source interface {
 	Refresh()
 	SelectUF(uf string)
 	ClearUF()
+	LoadMap()
 }
 
 type tickMsg time.Time
@@ -61,6 +64,9 @@ type Model struct {
 	showHelp     bool
 	showDetails  bool
 	showUFSelect bool
+	showMap      bool
+	mapGrid      [][]string
+	mapGridKey   string
 	detailKind   detailsKind
 	detailIndex  int
 	ufIndex      int
@@ -198,6 +204,15 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.status.UFView != nil && m.src != nil {
 			m.src.ClearUF()
 		}
+	case "m":
+		if m.showMap {
+			m.showMap = false
+			break
+		}
+		m.showMap = true
+		if m.src != nil && (m.status.Map == nil || m.status.Map.Error != "" || (len(m.status.Map.States) == 0 && !m.status.Map.Loading)) {
+			m.src.LoadMap()
+		}
 	case "tab", "shift+tab":
 		m.focus = 1 - m.focus
 	case "c":
@@ -219,13 +234,17 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		m.openDetails()
 	case "esc":
-		m.focus = 0
+		if m.showMap {
+			m.showMap = false
+		} else {
+			m.focus = 0
+		}
 	}
 	return m, nil
 }
 
 func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
-	if m.showUFSelect {
+	if m.showUFSelect || m.showMap {
 		return m, nil
 	}
 	if m.showHelp || m.showDetails {
@@ -372,6 +391,24 @@ func ufLabel(code string) string {
 		return "Brasil (consolidado)"
 	}
 	return tse.StateName(code) + " (" + strings.ToUpper(code) + ")"
+}
+
+func (m *Model) ensureMapGrid(width, logicalHeight int) error {
+	mv := m.status.Map
+	if mv == nil {
+		return nil
+	}
+	key := fmt.Sprintf("%d:%d:%d", width, logicalHeight, mv.FetchedAt.UnixNano())
+	if key == m.mapGridKey && m.mapGrid != nil {
+		return nil
+	}
+	grid, err := chart.RasterStates(width, logicalHeight)
+	if err != nil {
+		return err
+	}
+	m.mapGrid = grid
+	m.mapGridKey = key
+	return nil
 }
 
 func (m *Model) candidateCount() int {

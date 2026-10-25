@@ -81,6 +81,15 @@ UF. `b` volta ao consolidado.
 - Em eleição estadual/municipal o seletor não é oferecido (use `URNA_UF`).
 - O cache em memória da visão é curto (30s) para evitar consultas repetidas.
 
+## Mapa na TUI
+
+Pressione `m` na TUI. O app carrega os 27 arquivos de UF (cache de 60s) e
+desenha o Brasil em blocos coloridos no terminal, usando o mesmo critério do
+mapa do Telegram: cor do candidato com mais votos na UF; cinza sem votos.
+`m` ou `esc` fecha. O mapa é somente leitura e não altera o consolidado, o
+estado durável ou as notificações. O `TELEGRAM_MAPS` só controla o mapa
+enviado ao Telegram; o mapa da TUI não depende dele.
+
 ## Notificações e gráficos
 
 - A mensagem é curta: candidatos principais, mudanças de votos/seções,

@@ -42,7 +42,8 @@ Regras de dependência:
 
 - `domain` não importa nada do projeto.
 - `tse` não importa `store`, `telegram` nem `tui`.
-- `tui` só lê `observability.Status` e chama `Pause/Resume/Refresh` via interface.
+- `tui` só lê `observability.Status` e chama `Pause/Resume/Refresh/SelectUF/LoadMap`
+  via interface.
 - A coleta nunca depende da TUI.
 - Evite abstrações genéricas; interfaces pequenas e no ponto de uso.
 

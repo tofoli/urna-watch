@@ -32,6 +32,28 @@ type UFView struct {
 	FetchedAt time.Time        `json:"fetchedAt,omitempty"`
 }
 
+// MapState is the leading candidate in one state, derived only from the
+// official per-UF result file.
+type MapState struct {
+	UF           string `json:"uf"`
+	WinnerNumber string `json:"winnerNumber,omitempty"`
+	WinnerName   string `json:"winnerName,omitempty"`
+	WinnerParty  string `json:"winnerParty,omitempty"`
+	Votes        int64  `json:"votes,omitempty"`
+	PercentNano  int64  `json:"percentNano,omitempty"`
+	PercentText  string `json:"percentText,omitempty"`
+	Counted      bool   `json:"counted"`
+}
+
+// MapView is the on-demand state map used by the TUI. It is presentation-only
+// and never affects the monitored Brazil snapshot or notifications.
+type MapView struct {
+	Loading   bool                `json:"loading"`
+	Error     string              `json:"error,omitempty"`
+	States    map[string]MapState `json:"states,omitempty"`
+	FetchedAt time.Time           `json:"fetchedAt,omitempty"`
+}
+
 // Status is the immutable view consumed by presentation layers. The collection
 // loop builds it while holding its own lock; readers never touch live state.
 type Status struct {
@@ -41,6 +63,7 @@ type Status struct {
 	Snapshot         *domain.Snapshot     `json:"snapshot,omitempty"`
 	PreviousSnapshot *domain.Snapshot     `json:"previousSnapshot,omitempty"`
 	UFView           *UFView              `json:"ufView,omitempty"`
+	Map              *MapView             `json:"map,omitempty"`
 	Events           []domain.EventRecord `json:"events"`
 	Poll             polling.Metrics      `json:"poll"`
 	Telegram         notification.Stats   `json:"telegram"`

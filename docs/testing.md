@@ -23,8 +23,8 @@ nem Telegram e **não** exige token. Fixtures reais ficam em
 | `internal/telegram` | envio; parse mode; `sendPhoto` multipart; 429; erro permanente com token redigido; 5xx; validação; split UTF-16/emoji/linha longa |
 | `internal/chart` | PNG válido/dimensões; barras; mapa com 27 UFs; vencedores por estado; sem votos retorna `ErrNoData` |
 | `internal/config` | defaults; env; JSON estrito; validação; redaction do chat id |
-| `internal/tui` | dimensões 120x40, 100x30, 80x24, 40x12; largura/altura; teclado; mouse/roleta; detalhes; navegação; ajuda; seletor/visão por UF; snapshot vazio |
-| `tests/integration` | pipeline completo com TSE simulado: baseline, 304, mudança, dedupe, persistência, gráfico via `sendPhoto` no Telegram fake, outbox `sent`, visão por UF somente leitura |
+| `internal/tui` | dimensões 120x40, 100x30, 80x24, 40x12; largura/altura; teclado; mouse/roleta; detalhes; navegação; ajuda; seletor/visão por UF; mapa por UF; snapshot vazio |
+| `tests/integration` | pipeline completo com TSE simulado: baseline, 304, mudança, dedupe, persistência, gráfico via `sendPhoto` no Telegram fake, outbox `sent`, visão por UF e mapa da TUI somente leitura |
 
 ## Fixtures
 
@@ -97,7 +97,7 @@ estado e o log registrou `notificação enviada ao Telegram`.
 | `govulncheck ./...` | 0 vulnerabilidades chamadas (1 em módulo, não chamada) |
 | `docker build -t urna-watch:local .` | OK |
 | container non-root com volume nomeado | `/healthz` 200; estado `0600`; snapshot 3948414 |
-| TUI em PTY (`script`) | renderizou candidatos/painéis sem panic |
+| TUI em PTY (`screen`) | candidatos, seletor UF e mapa por UF renderizados sem panic |
 | smoke real TSE + Telegram | linha de base e atualizações entregues; mapa enviado via `sendPhoto`; estado `sent` |
 
 O smoke real usou a fonte oficial e um grupo privado; o token/chat id **não**

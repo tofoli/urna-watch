@@ -20,6 +20,7 @@ import (
 	"github.com/gpu/urna-watch/internal/config"
 	"github.com/gpu/urna-watch/internal/detector"
 	"github.com/gpu/urna-watch/internal/domain"
+	"github.com/gpu/urna-watch/internal/format"
 	"github.com/gpu/urna-watch/internal/notification"
 	"github.com/gpu/urna-watch/internal/observability"
 	"github.com/gpu/urna-watch/internal/polling"
@@ -55,6 +56,9 @@ type App struct {
 	mapStates    map[string]*domain.Snapshot
 	mapConds     map[string]tse.Conditional
 	mapAt        time.Time
+	mapLoadMu    sync.Mutex
+	mapSeq       int
+	mapView      *observability.MapView
 }
 
 // New builds the application. It validates that the persisted state belongs to
@@ -320,6 +324,7 @@ func (a *App) Status() observability.Status {
 		Snapshot:         st.Snapshot,
 		PreviousSnapshot: a.previousSnapshot(),
 		UFView:           a.ufViewCopy(),
+		Map:              a.mapViewCopy(),
 		Events:           events,
 		Poll:             poll,
 		Telegram:         a.notify.Stats(),
@@ -613,9 +618,11 @@ func (a *App) renderChart(ctx context.Context, s *domain.Snapshot) ([]byte, erro
 // stateResults fetches the per-UF result files used only to colour the map.
 // It is cached for 60s and never mutates persisted state.
 func (a *App) stateResults(ctx context.Context, base *domain.Snapshot) map[string]*domain.Snapshot {
-	if !a.cfg.Telegram.Maps || base == nil {
+	if base == nil {
 		return nil
 	}
+	a.mapLoadMu.Lock()
+	defer a.mapLoadMu.Unlock()
 	if time.Since(a.mapAt) < 60*time.Second && len(a.mapStates) > 0 {
 		return a.mapStates
 	}
@@ -692,6 +699,95 @@ func (a *App) stateResults(ctx context.Context, base *domain.Snapshot) map[strin
 		a.log.Warn("não foi possível carregar todas as UFs para o mapa", "falhas", errorsCount, "ufs_com_dados", len(fresh))
 	}
 	return fresh
+}
+
+// LoadMap loads a read-only state map for the TUI. It is independent from the
+// Telegram chart path but shares the 60s per-UF cache.
+func (a *App) LoadMap() {
+	base := a.store.Snapshot().Snapshot
+	if base == nil {
+		a.setMapView(&observability.MapView{Error: "aguarde a primeira coleta consolidada", FetchedAt: time.Now()})
+		return
+	}
+	if !isFederalBrazil(base) {
+		a.setMapView(&observability.MapView{Error: "mapa por UF disponível apenas para eleição federal monitorada em âmbito Brasil", FetchedAt: time.Now()})
+		return
+	}
+	a.mu.Lock()
+	if a.mapView != nil && a.mapView.Loading {
+		a.mu.Unlock()
+		return
+	}
+	a.mapSeq++
+	seq := a.mapSeq
+	a.mapView = &observability.MapView{Loading: true, States: map[string]observability.MapState{}}
+	a.mu.Unlock()
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+		defer cancel()
+		states := a.stateResults(ctx, base)
+		mv := buildMapView(states)
+		a.mu.Lock()
+		if seq == a.mapSeq {
+			a.mapView = mv
+		}
+		a.mu.Unlock()
+	}()
+}
+
+func (a *App) setMapView(mv *observability.MapView) {
+	a.mu.Lock()
+	a.mapSeq++
+	a.mapView = mv
+	a.mu.Unlock()
+}
+
+func (a *App) mapViewCopy() *observability.MapView {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.mapView == nil {
+		return nil
+	}
+	cp := *a.mapView
+	if a.mapView.States != nil {
+		cp.States = make(map[string]observability.MapState, len(a.mapView.States))
+		for k, v := range a.mapView.States {
+			cp.States[k] = v
+		}
+	}
+	return &cp
+}
+
+func buildMapView(states map[string]*domain.Snapshot) *observability.MapView {
+	mv := &observability.MapView{States: map[string]observability.MapState{}, FetchedAt: time.Now()}
+	counted := 0
+	for uf, snap := range states {
+		item := observability.MapState{UF: strings.ToUpper(uf)}
+		if snap != nil {
+			for _, c := range snap.Candidates {
+				if c.Votes.OrZero() > 0 {
+					item.WinnerNumber = c.Number
+					item.WinnerName = c.DisplayName()
+					item.WinnerParty = c.PartyAcronym
+					item.Votes = c.Votes.OrZero()
+					item.PercentNano = c.PercentNano
+					item.PercentText = c.PercentText
+					if item.PercentText == "" {
+						item.PercentText = format.PercentNano(item.PercentNano)
+					}
+					item.Counted = true
+					counted++
+					break
+				}
+			}
+		}
+		mv.States[uf] = item
+	}
+	if counted == 0 {
+		mv.Error = "ainda não há votos por UF publicados"
+	}
+	return mv
 }
 
 func isFederalBrazil(s *domain.Snapshot) bool {

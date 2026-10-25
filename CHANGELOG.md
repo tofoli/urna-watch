@@ -30,7 +30,7 @@ adheres to [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - Optional PNG bar charts sent as Telegram photos (`TELEGRAM_CHARTS`).
 - Brazil map dashboard coloured by the winning candidate in each state
   (`TELEGRAM_MAPS`), using the official IBGE state mesh.
-- In-TUI UF selector for on-demand results by state.
+- In-TUI UF selector and terminal map of state winners (`m`).
 - Bubble Tea / Lip Gloss dashboard with keyboard and mouse interaction,
   responsive layout, details, event history, on-demand UF breakdown and
   headless mode.

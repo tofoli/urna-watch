@@ -9,6 +9,9 @@ O mapa do Telegram é uma visualização derivada dos totais oficiais por UF; el
 - Arquivo: `internal/chart/brazil.geojson` (27 UFs, ~98 KB)
 - Propriedade usada: `properties.codarea` (código IBGE da UF)
 - Projeção: equirretangular simples, ajustada ao painel; apenas visual.
+- A mesma malha é rasterizada para a TUI (blocos `▀` com cores) e para o PNG
+  enviado ao Telegram; a TUI usa uma grade menor, então estados muito pequenos
+  podem ficar com poucos pixels.
 - Cores: atribuídas por posição do candidato no snapshot Brasil; estados sem
   votos publicados ficam cinza.
 - Vencedor por UF: candidato com mais votos no arquivo oficial `-u.json` da UF.

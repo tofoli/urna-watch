@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/gpu/urna-watch/internal/domain"
 	"github.com/gpu/urna-watch/internal/format"
 )
@@ -39,6 +40,8 @@ func (m *Model) View() string {
 		body = m.helpBody(bodyHeight)
 	case m.showUFSelect:
 		body = m.ufBody(bodyHeight)
+	case m.showMap:
+		body = m.mapBody(bodyHeight)
 	case m.showDetails:
 		body = m.detailsBody(bodyHeight)
 	case m.width >= 108:
@@ -549,6 +552,106 @@ func (m *Model) ufBody(height int) []string {
 	return centerBox(content, m.width, height)
 }
 
+func (m *Model) mapBody(height int) []string {
+	title := panelTitle("MAPA — maioria por UF", m.width)
+	mv := m.status.Map
+	if mv == nil {
+		return padLines([]string{title, "", accentStyle.Render("  carregando os 27 arquivos de UF…"), "", mutedStyle.Render("m/esc fechar")}, height, m.width)
+	}
+	if mv.Loading {
+		return padLines([]string{title, "", accentStyle.Render("  carregando os 27 arquivos de UF…"), "", mutedStyle.Render("m/esc fechar")}, height, m.width)
+	}
+	if mv.Error != "" {
+		return padLines([]string{title, "", badStyle.Render("  " + fit(mv.Error, m.width-4)), "", mutedStyle.Render("m/esc fechar")}, height, m.width)
+	}
+	main := m.status.Snapshot
+	if main == nil {
+		return padLines([]string{title, "", mutedStyle.Render("  sem snapshot consolidado"), ""}, height, m.width)
+	}
+	mapRows := height - 4
+	if mapRows < 5 {
+		mapRows = 5
+	}
+	width := min(m.width-4, 112)
+	if width < 40 {
+		width = 40
+	}
+	logicalHeight := mapRows * 2
+	if err := m.ensureMapGrid(width, logicalHeight); err != nil {
+		return padLines([]string{title, "", badStyle.Render("  " + fit(err.Error(), m.width-4)), "", mutedStyle.Render("m/esc fechar")}, height, m.width)
+	}
+	colors := make(map[string]lipgloss.Color, len(main.Candidates))
+	for i, c := range main.Candidates {
+		colors[c.Number] = mapPalette[i%len(mapPalette)]
+	}
+	colorFor := func(uf string) lipgloss.Color {
+		if uf == "" {
+			return mapOcean
+		}
+		st, ok := mv.States[strings.ToLower(uf)]
+		if !ok || !st.Counted || st.WinnerNumber == "" {
+			return mapGray
+		}
+		if c, ok := colors[st.WinnerNumber]; ok {
+			return c
+		}
+		return mapGray
+	}
+	cache := map[[2]string]string{}
+	cell := func(top, bottom string) string {
+		t, b := colorFor(top), colorFor(bottom)
+		key := [2]string{string(t), string(b)}
+		if s, ok := cache[key]; ok {
+			return s
+		}
+		var s string
+		if top == "" && bottom == "" {
+			s = lipgloss.NewStyle().Background(mapOcean).Render(" ")
+		} else {
+			s = lipgloss.NewStyle().Foreground(t).Background(b).Render("▀")
+		}
+		cache[key] = s
+		return s
+	}
+	lines := []string{title}
+	for row := 0; row < mapRows && row*2+1 < len(m.mapGrid); row++ {
+		var b strings.Builder
+		topRow := m.mapGrid[row*2]
+		bottomRow := m.mapGrid[row*2+1]
+		for x := 0; x < width; x++ {
+			var top, bottom string
+			if x < len(topRow) {
+				top = topRow[x]
+			}
+			if x < len(bottomRow) {
+				bottom = bottomRow[x]
+			}
+			b.WriteString(cell(top, bottom))
+		}
+		lines = append(lines, center(b.String(), m.width))
+	}
+	var legend []string
+	for i, c := range main.Candidates {
+		if i >= 4 {
+			break
+		}
+		pct := c.PercentText
+		if pct == "" {
+			pct = format.PercentNano(c.PercentNano)
+		}
+		swatch := lipgloss.NewStyle().Foreground(colors[c.Number]).Render("■")
+		legend = append(legend, swatch+" "+c.DisplayName()+" "+pct+"%")
+	}
+	lines = append(lines, "  "+strings.Join(legend, "   "))
+	note := "Cinza = sem votos · cor = candidato com mais votos na UF · "
+	if !mv.FetchedAt.IsZero() {
+		note += "carregado " + format.Relative(mv.FetchedAt, time.Now())
+	}
+	lines = append(lines, mutedStyle.Render("  "+fit(note, m.width-4)))
+	lines = append(lines, mutedStyle.Render("  m/esc fechar · o consolidado Brasil continua sendo monitorado"))
+	return padLines(lines, height, m.width)
+}
+
 func (m *Model) helpBody(height int) []string {
 	content := []string{
 		titleStyle.Render("ATALHOS"),
@@ -561,6 +664,7 @@ func (m *Model) helpBody(height int) []string {
 		"c / e        focar candidatos / eventos",
 		"u            abrir visão por UF (eleição federal)",
 		"b            voltar ao consolidado Brasil",
+		"m            mapa do Brasil por UF vencedora",
 		"g / G        ir ao início / fim",
 		"h ou ?       esta ajuda",
 		"q            sair",
@@ -713,10 +817,10 @@ func centerBox(content []string, screenWidth, height int) []string {
 }
 
 func (m *Model) footerLines() []string {
-	help := "↑/↓ selecionar · tab painéis · u UF · b Brasil · p pausar · r atualizar · enter detalhes · h ajuda · q sair"
+	help := "↑/↓ selecionar · tab painéis · u UF · b Brasil · m mapa · p pausar · r atualizar · enter detalhes · h ajuda · q sair"
 	hint := "mouse: clique nas linhas · roda: rolagem · Δ = variação desde o snapshot anterior · fonte: JSON oficial do TSE"
 	if m.width < 80 {
-		help = "↑/↓ · tab · u UF · b BR · p · r · enter · h · q"
+		help = "↑/↓ · tab · u UF · b BR · m mapa · p · r · enter · h · q"
 		hint = "mouse: clique/roda · Δ = variação · fonte: TSE"
 	}
 	return []string{rule(m.width), mutedStyle.Render(fit(help, m.width)), mutedStyle.Render(fit(hint, m.width))}

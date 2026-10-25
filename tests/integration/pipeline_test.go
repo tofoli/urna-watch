@@ -268,6 +268,44 @@ func TestUFBreakdownIsReadOnlyAndDoesNotTouchState(t *testing.T) {
 	}
 }
 
+func TestTUIMapLoadIsReadOnly(t *testing.T) {
+	ts := newTSEServer(t)
+	statePath := filepath.Join(t.TempDir(), "state.json")
+	cfg := testAppConfig(t, ts.srv.URL, statePath)
+	a, err := app.New(cfg, discardLogger())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.ProcessOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	before := loadState(t, statePath)
+	a.LoadMap()
+	deadline := time.Now().Add(5 * time.Second)
+	var mv *observability.MapView
+	for {
+		mv = a.Status().Map
+		if mv != nil && !mv.Loading {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("map did not load: %+v", mv)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if mv.Error != "" {
+		t.Fatalf("map error: %s", mv.Error)
+	}
+	sp, ok := mv.States["sp"]
+	if !ok || !sp.Counted || sp.WinnerNumber == "" {
+		t.Fatalf("SP state = %+v", sp)
+	}
+	after := loadState(t, statePath)
+	if after.Snapshot.SourceVersion != before.Snapshot.SourceVersion || len(after.Events) != len(before.Events) {
+		t.Fatalf("map load changed persisted state")
+	}
+}
+
 func TestPipelineTelegramDelivery(t *testing.T) {
 	ts := newTSEServer(t)
 	statePath := filepath.Join(t.TempDir(), "state.json")

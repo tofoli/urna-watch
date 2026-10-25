@@ -180,24 +180,7 @@ func RenderMap(main *domain.Snapshot, states map[string]*domain.Snapshot) ([]byt
 }
 
 func renderBrazil(shapes []geoState, winners map[string]string, colors map[string]color.RGBA) image.Image {
-	bounds := geoBounds{MinLon: math.MaxFloat64, MinLat: math.MaxFloat64, MaxLon: -math.MaxFloat64, MaxLat: -math.MaxFloat64}
-	for _, s := range shapes {
-		bounds.MinLon = math.Min(bounds.MinLon, s.Bounds.MinLon)
-		bounds.MinLat = math.Min(bounds.MinLat, s.Bounds.MinLat)
-		bounds.MaxLon = math.Max(bounds.MaxLon, s.Bounds.MaxLon)
-		bounds.MaxLat = math.Max(bounds.MaxLat, s.Bounds.MaxLat)
-	}
-	lonSpan := bounds.MaxLon - bounds.MinLon
-	latSpan := bounds.MaxLat - bounds.MinLat
-	scale := math.Min(float64(mapInnerW)/lonSpan, float64(mapInnerH)/latSpan)
-	offX := (float64(mapInnerW) - lonSpan*scale) / 2
-	offY := (float64(mapInnerH) - latSpan*scale) / 2
-	project := func(p geoPoint) (float32, float32) {
-		x := float32(offX + (p.Lon-bounds.MinLon)*scale)
-		y := float32(offY + (bounds.MaxLat-p.Lat)*scale)
-		return x, y
-	}
-
+	project := newProjector(shapes, mapInnerW, mapInnerH)
 	img := image.NewRGBA(image.Rect(0, 0, mapInnerW, mapInnerH))
 	for _, s := range shapes {
 		uf := strings.ToUpper(s.UF)
@@ -240,6 +223,26 @@ func renderBrazil(shapes []geoState, winners map[string]string, colors map[strin
 		}
 	}
 	return img
+}
+
+func newProjector(shapes []geoState, width, height int) func(geoPoint) (float32, float32) {
+	bounds := geoBounds{MinLon: math.MaxFloat64, MinLat: math.MaxFloat64, MaxLon: -math.MaxFloat64, MaxLat: -math.MaxFloat64}
+	for _, s := range shapes {
+		bounds.MinLon = math.Min(bounds.MinLon, s.Bounds.MinLon)
+		bounds.MinLat = math.Min(bounds.MinLat, s.Bounds.MinLat)
+		bounds.MaxLon = math.Max(bounds.MaxLon, s.Bounds.MaxLon)
+		bounds.MaxLat = math.Max(bounds.MaxLat, s.Bounds.MaxLat)
+	}
+	lonSpan := bounds.MaxLon - bounds.MinLon
+	latSpan := bounds.MaxLat - bounds.MinLat
+	scale := math.Min(float64(width)/lonSpan, float64(height)/latSpan)
+	offX := (float64(width) - lonSpan*scale) / 2
+	offY := (float64(height) - latSpan*scale) / 2
+	return func(p geoPoint) (float32, float32) {
+		x := float32(offX + (p.Lon-bounds.MinLon)*scale)
+		y := float32(offY + (bounds.MaxLat-p.Lat)*scale)
+		return x, y
+	}
 }
 
 func loadBrazilMap() ([]geoState, error) {
