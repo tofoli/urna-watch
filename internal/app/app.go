@@ -7,12 +7,16 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/gpu/urna-watch/internal/chart"
 	"github.com/gpu/urna-watch/internal/config"
 	"github.com/gpu/urna-watch/internal/detector"
 	"github.com/gpu/urna-watch/internal/domain"
@@ -36,6 +40,7 @@ type App struct {
 	format  notification.Formatter
 
 	startedAt time.Time
+	mediaDir  string
 	done      chan struct{}
 	closeOnce sync.Once
 
@@ -47,6 +52,9 @@ type App struct {
 	ufView       *observability.UFView
 	ufSeq        int
 	ufCache      map[string]ufCacheEntry
+	mapStates    map[string]*domain.Snapshot
+	mapConds     map[string]tse.Conditional
+	mapAt        time.Time
 }
 
 // New builds the application. It validates that the persisted state belongs to
@@ -113,10 +121,13 @@ func New(cfg config.Config, log *slog.Logger) (*App, error) {
 		store:     st,
 		notify:    svc,
 		poller:    poller,
-		format:    notification.Formatter{MaxCandidates: 10, MaxChanges: 15},
+		format:    notification.Formatter{MaxCandidates: 5, MaxChanges: 6},
 		startedAt: time.Now(),
+		mediaDir:  filepath.Join(filepath.Dir(cfg.StatePath), "media"),
 		done:      make(chan struct{}),
 		ufCache:   map[string]ufCacheEntry{},
+		mapStates: map[string]*domain.Snapshot{},
+		mapConds:  map[string]tse.Conditional{},
 		source: observability.SourceStatus{
 			URL: "",
 		},
@@ -147,6 +158,7 @@ func (a *App) Run(ctx context.Context) {
 			a.log.Warn("falha ao suprimir notificações pendentes", "erro", err)
 		}
 	}
+	a.cleanupMedia()
 	var wg sync.WaitGroup
 	if a.cfg.StatusAddr != "" {
 		wg.Add(1)
@@ -402,7 +414,7 @@ func (a *App) collect(ctx context.Context) error {
 		var events []domain.EventRecord
 		var rows []store.Notification
 		if st.Snapshot != nil {
-			events, rows = a.buildEvents(st, domain.ChangeSet{Previous: st.Snapshot, Current: st.Snapshot})
+			events, rows = a.buildEvents(ctx, st, domain.ChangeSet{Previous: st.Snapshot, Current: st.Snapshot})
 		}
 		if err := a.persistSuccess(ctx, st, res, events, rows); err != nil {
 			return err
@@ -435,7 +447,7 @@ func (a *App) collect(ctx context.Context) error {
 		a.previous = st.Snapshot
 		a.mu.Unlock()
 	}
-	events, rows := a.buildEvents(st, set)
+	events, rows := a.buildEvents(ctx, st, set)
 	a.setSource(observability.SourceStatus{
 		URL:          res.URL,
 		StatusCode:   res.StatusCode,
@@ -468,7 +480,7 @@ func (a *App) collect(ctx context.Context) error {
 	return nil
 }
 
-func (a *App) buildEvents(st store.State, set domain.ChangeSet) ([]domain.EventRecord, []store.Notification) {
+func (a *App) buildEvents(ctx context.Context, st store.State, set domain.ChangeSet) ([]domain.EventRecord, []store.Notification) {
 	now := time.Now()
 	var events []domain.EventRecord
 	var rows []store.Notification
@@ -483,22 +495,28 @@ func (a *App) buildEvents(st store.State, set domain.ChangeSet) ([]domain.EventR
 			ElectionKey:   selectionKey(a.cfg.Ref()),
 			Items:         set.Items,
 		}
-		var text string
-		if set.Baseline {
-			text = a.format.Baseline(set.Current)
-		} else {
-			text = a.format.Update(set)
-		}
-		status := domain.NotifyPending
-		if !a.notify.Enabled() {
-			status = domain.NotifyDisabled
-		} else if set.Baseline && !a.cfg.Telegram.Baseline {
-			status = domain.NotifySuppressed
-		}
-		event.NotificationStatus = status
-		events = append(events, event)
-		if status == domain.NotifyPending {
-			rows = append(rows, notification.BuildRows(event.ID, text, now)...)
+		if _, exists := st.Event(event.ID); !exists {
+			var text string
+			if set.Baseline {
+				text = a.format.Baseline(set.Current)
+			} else {
+				text = a.format.Update(set)
+			}
+			status := domain.NotifyPending
+			if !a.notify.Enabled() {
+				status = domain.NotifyDisabled
+			} else if set.Baseline && !a.cfg.Telegram.Baseline {
+				status = domain.NotifySuppressed
+			}
+			event.NotificationStatus = status
+			if status == domain.NotifyPending {
+				if photoRows := a.chartRows(ctx, event.ID, text, set.Current, now); photoRows != nil {
+					rows = append(rows, photoRows...)
+				} else {
+					rows = append(rows, notification.BuildRows(event.ID, text, now)...)
+				}
+			}
+			events = append(events, event)
 		}
 	}
 
@@ -520,6 +538,184 @@ func (a *App) buildEvents(st store.State, set domain.ChangeSet) ([]domain.EventR
 		}
 	}
 	return events, rows
+}
+
+// chartRows renders a PNG and returns a photo outbox row. A nil result means
+// the caller should fall back to text (disabled, no votes, or caption too long).
+func (a *App) chartRows(ctx context.Context, eventID, caption string, s *domain.Snapshot, now time.Time) []store.Notification {
+	if !a.cfg.Telegram.Charts || s == nil {
+		return nil
+	}
+	if telegram.UTF16Length(caption) > telegram.MaxCaptionLength {
+		return nil
+	}
+	data, err := a.renderChart(ctx, s)
+	if err != nil {
+		if !errors.Is(err, chart.ErrNoData) {
+			a.log.Warn("falha ao gerar gráfico; enviando texto", "erro", err)
+		}
+		return nil
+	}
+	if err := os.MkdirAll(a.mediaDir, 0o700); err != nil {
+		a.log.Warn("falha ao criar diretório de gráficos; enviando texto", "erro", err)
+		return nil
+	}
+	path := filepath.Join(a.mediaDir, eventID+".png")
+	tmp, err := os.CreateTemp(a.mediaDir, ".chart-*.tmp")
+	if err != nil {
+		a.log.Warn("falha ao criar gráfico temporário; enviando texto", "erro", err)
+		return nil
+	}
+	tmpName := tmp.Name()
+	cleanup := func() {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+	}
+	if err := tmp.Chmod(0o600); err != nil {
+		cleanup()
+		return nil
+	}
+	if _, err := tmp.Write(data); err != nil {
+		cleanup()
+		return nil
+	}
+	if err := tmp.Sync(); err != nil {
+		cleanup()
+		return nil
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpName)
+		return nil
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		_ = os.Remove(tmpName)
+		return nil
+	}
+	return notification.PhotoRows(eventID, caption, path, now)
+}
+
+// renderChart prefers the state-winner dashboard map for federal Brazil and
+// falls back to the candidate bar chart when map data is unavailable.
+func (a *App) renderChart(ctx context.Context, s *domain.Snapshot) ([]byte, error) {
+	if a.cfg.Telegram.Maps && isFederalBrazil(s) {
+		states := a.stateResults(ctx, s)
+		if len(states) > 0 {
+			if data, err := chart.RenderMap(s, states); err == nil {
+				return data, nil
+			} else if !errors.Is(err, chart.ErrNoData) {
+				a.log.Warn("falha ao gerar mapa; usando gráfico de barras", "erro", err)
+			}
+		}
+	}
+	return chart.Render(s)
+}
+
+// stateResults fetches the per-UF result files used only to colour the map.
+// It is cached for 60s and never mutates persisted state.
+func (a *App) stateResults(ctx context.Context, base *domain.Snapshot) map[string]*domain.Snapshot {
+	if !a.cfg.Telegram.Maps || base == nil {
+		return nil
+	}
+	if time.Since(a.mapAt) < 60*time.Second && len(a.mapStates) > 0 {
+		return a.mapStates
+	}
+	mapCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	type fetchResult struct {
+		uf    string
+		snap  *domain.Snapshot
+		cond  tse.Conditional
+		err   error
+		stale bool
+	}
+	ufs := []string{
+		"ac", "al", "am", "ap", "ba", "ce", "df", "es", "go", "ma", "mg", "ms", "mt",
+		"pa", "pb", "pe", "pi", "pr", "rj", "rn", "ro", "rr", "rs", "sc", "se", "sp", "to",
+	}
+	results := make(chan fetchResult, len(ufs))
+	sem := make(chan struct{}, 4)
+	localConds := make(map[string]tse.Conditional, len(ufs))
+	localStates := make(map[string]*domain.Snapshot, len(ufs))
+	for _, uf := range ufs {
+		localConds[uf] = a.mapConds[uf]
+		localStates[uf] = a.mapStates[uf]
+	}
+	var wg sync.WaitGroup
+	for _, uf := range ufs {
+		wg.Add(1)
+		go func(uf string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			ref := domain.ElectionRef{
+				ElectionCode: base.Election.ElectionCode,
+				ContestCode:  base.Election.ContestCode,
+				Round:        base.Election.Round,
+				Scope:        domain.Scope{Kind: domain.ScopeState, UF: uf},
+			}
+			res, err := a.adapter.Fetch(mapCtx, ref, localConds[uf])
+			results <- fetchResult{
+				uf: uf, snap: res.Snapshot, cond: tse.Conditional{ETag: res.ETag, LastModified: res.LastModified},
+				err: err, stale: res.NotModified,
+			}
+		}(uf)
+	}
+	go func() { wg.Wait(); close(results) }()
+	fresh := map[string]*domain.Snapshot{}
+	newConds := make(map[string]tse.Conditional, len(ufs))
+	for uf, cond := range localConds {
+		newConds[uf] = cond
+	}
+	errorsCount := 0
+	for res := range results {
+		switch {
+		case res.err == nil && res.snap != nil:
+			fresh[res.uf] = res.snap
+			newConds[res.uf] = res.cond
+		case res.err == nil && (res.stale || res.snap == nil):
+			if cached := localStates[res.uf]; cached != nil {
+				fresh[res.uf] = cached
+			}
+		default:
+			errorsCount++
+			if cached := localStates[res.uf]; cached != nil {
+				fresh[res.uf] = cached
+			}
+		}
+	}
+	if len(fresh) > 0 {
+		a.mapStates = fresh
+		a.mapConds = newConds
+		a.mapAt = time.Now()
+	}
+	if errorsCount > 0 {
+		a.log.Warn("não foi possível carregar todas as UFs para o mapa", "falhas", errorsCount, "ufs_com_dados", len(fresh))
+	}
+	return fresh
+}
+
+func isFederalBrazil(s *domain.Snapshot) bool {
+	return s != nil && s.Election.Scope.Kind == domain.ScopeBrazil && strings.EqualFold(s.Election.Level, "federal")
+}
+
+// cleanupMedia removes orphan chart files older than a week. Files belonging
+// to pending notifications are recent and are kept.
+func (a *App) cleanupMedia() {
+	entries, err := os.ReadDir(a.mediaDir)
+	if err != nil {
+		return
+	}
+	cutoff := time.Now().Add(-7 * 24 * time.Hour)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil || info.ModTime().After(cutoff) {
+			continue
+		}
+		_ = os.Remove(filepath.Join(a.mediaDir, entry.Name()))
+	}
 }
 
 func (a *App) persistSuccess(ctx context.Context, before store.State, res tse.Result, events []domain.EventRecord, rows []store.Notification) error {

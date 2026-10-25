@@ -62,7 +62,10 @@
 ## Notificações
 
 - Formato HTML fixo; texto externo escapado.
-- Limite de 4096 unidades UTF-16; split em fronteiras de linha/runa.
+- Limite de 4096 unidades UTF-16 para texto e 1024 para legenda de foto;
+  split em fronteiras de linha/runa quando necessário.
+- Gráficos são PNGs gerados localmente a partir do snapshot; nenhum dado
+  externo é executado. Arquivos temporários ficam em `media/` com `0600`.
 - Outbox deduplica por evento/chunk.
 - Semântica at-least-once: uma falha ambígua pode duplicar uma mensagem; isso é
   preferível a perder notificação.

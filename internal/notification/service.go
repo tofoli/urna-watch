@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"math/big"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,6 +20,7 @@ import (
 // Sender is the subset of the Telegram client needed by the outbox worker.
 type Sender interface {
 	SendMessage(ctx context.Context, text string) (int, error)
+	SendPhoto(ctx context.Context, caption, path string) (int, error)
 }
 
 // Options configures the durable notification service.
@@ -169,6 +171,7 @@ func BuildRows(eventID, text string, now time.Time) []store.Notification {
 	for i, chunk := range chunks {
 		rows = append(rows, store.Notification{
 			ID:            eventID + "-" + strconv.Itoa(i),
+			Kind:          "text",
 			EventID:       eventID,
 			Chunk:         i + 1,
 			Chunks:        len(chunks),
@@ -179,6 +182,23 @@ func BuildRows(eventID, text string, now time.Time) []store.Notification {
 		})
 	}
 	return rows
+}
+
+// PhotoRows returns a single photo notification with the caption. If the
+// caption is too long for Telegram, the caller should fall back to BuildRows.
+func PhotoRows(eventID, caption, mediaPath string, now time.Time) []store.Notification {
+	return []store.Notification{{
+		ID:            eventID + "-0",
+		Kind:          "photo",
+		MediaPath:     mediaPath,
+		EventID:       eventID,
+		Chunk:         1,
+		Chunks:        1,
+		Text:          caption,
+		CreatedAt:     now,
+		NextAttemptAt: now,
+		State:         domain.NotifyPending,
+	}}
 }
 
 // Run is the outbox worker loop. It should run in its own goroutine.
@@ -260,7 +280,13 @@ func (s *Service) process(parent context.Context, item store.Notification) {
 	ctx, cancel := context.WithTimeout(parent, s.sendTimeout)
 	defer cancel()
 	start := s.now()
-	msgID, err := s.sender.SendMessage(ctx, item.Text)
+	var msgID int
+	var err error
+	if item.Kind == "photo" {
+		msgID, err = s.sender.SendPhoto(ctx, item.Text, item.MediaPath)
+	} else {
+		msgID, err = s.sender.SendMessage(ctx, item.Text)
+	}
 	attempts := item.Attempts + 1
 	if err == nil {
 		now := s.now()
@@ -279,8 +305,17 @@ func (s *Service) process(parent context.Context, item store.Notification) {
 		s.lastSent = now
 		s.lastErrMsg = ""
 		s.mu.Unlock()
+		if item.Kind == "photo" && item.MediaPath != "" {
+			if err := os.Remove(item.MediaPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+				s.log.Warn("não foi possível remover o gráfico enviado", "caminho", item.MediaPath, "erro", err)
+			}
+		}
+		kind := item.Kind
+		if kind == "" {
+			kind = "text"
+		}
 		s.log.Info("notificação enviada ao Telegram",
-			"evento", item.EventID, "parte", item.Chunk, "partes", item.Chunks,
+			"evento", item.EventID, "parte", item.Chunk, "partes", item.Chunks, "tipo", kind,
 			"tentativa", attempts, "latencia", now.Sub(start).String())
 		return
 	}
@@ -304,6 +339,9 @@ func (s *Service) process(parent context.Context, item store.Notification) {
 				n.State = domain.NotifyFailed
 			}
 		})
+		if permanent && item.Kind == "photo" && item.MediaPath != "" {
+			_ = os.Remove(item.MediaPath)
+		}
 		return nil
 	})
 	s.mu.Lock()
@@ -401,9 +439,9 @@ func retryAfter(err error) time.Duration {
 }
 
 func isRetryable(err error) bool {
-	var apiErr *telegram.APIError
-	if errors.As(err, &apiErr) {
-		return apiErr.Transient
+	var retryable interface{ IsRetryable() bool }
+	if errors.As(err, &retryable) {
+		return retryable.IsRetryable()
 	}
 	// Network errors, timeouts and context deadline errors are transient.
 	return true

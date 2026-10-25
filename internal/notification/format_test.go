@@ -19,7 +19,7 @@ func sampleSnapshot() *domain.Snapshot {
 		ContestName:  "Presidente",
 		Scope:        domain.Scope{Kind: domain.ScopeBrazil, UF: "br"},
 		ScopeName:    "Brasil",
-		SourcePage:   "https://resultados.tse.jus.br/oficial/app/index.html",
+		SourcePage:   "https://resultados.tse.jus.br/oficial/app/index.html#/eleicao/6258/uf/br/cargo/1/vis/nominal/resultados",
 	}
 	s := &domain.Snapshot{
 		Election:            info,
@@ -52,10 +52,10 @@ func TestBaselineMessageUsesSourceValues(t *testing.T) {
 	f := Formatter{}
 	msg := f.Baseline(sampleSnapshot())
 	for _, want := range []string{
-		"Linha de base", "Eleição Ordinária Federal - 2026 2º Turno", "Presidente",
-		"Brasil", "2º turno", "25/10/2026 17:06:27", "LULA", "PT",
-		"193.574", "57,66", "FLAVIO BOLSONARO", "142.169", "42,34",
-		"1.225 de 499.248", "335.743", "Fonte oficial:", "Em apuração",
+		"primeiro snapshot", "Presidente", "2026", "2º turno", "Brasil",
+		"atualizado 25/10/2026 17:06:27", "LULA", "PT", "57,66%", "193.574 votos",
+		"FLAVIO BOLSONARO", "142.169", "42,34%", "1.225 de 499.248",
+		"Ver no site do TSE", "#/eleicao/6258/uf/br/cargo/1/vis/nominal/resultados",
 	} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("message missing %q:\n%s", want, msg)
@@ -63,6 +63,12 @@ func TestBaselineMessageUsesSourceValues(t *testing.T) {
 	}
 	if strings.Contains(msg, "eleito") {
 		t.Fatalf("partial data must not claim elected:\n%s", msg)
+	}
+	if strings.Contains(msg, "/dados/") || strings.Contains(msg, "-u.json") {
+		t.Fatalf("message must link the human page, not the JSON file:\n%s", msg)
+	}
+	if strings.Contains(msg, "335.743") || strings.Contains(msg, "Brancos") {
+		t.Fatalf("message should stay simple, without extra totals:\n%s", msg)
 	}
 }
 
@@ -85,18 +91,18 @@ func TestUpdateMessageAndRevision(t *testing.T) {
 		},
 	}
 	msg := Formatter{}.Update(set)
-	for _, want := range []string{"Atualização da apuração", "Mudanças desde a última atualização", "LULA", "193.574 → 200.000", "+6.426 votos", "FLAVIO BOLSONARO", "142.169 → 140.000", "-2.169 votos"} {
+	for _, want := range []string{"atualização", "Mudanças", "LULA +6.426 (58,00%)", "FLAVIO BOLSONARO -2.169 (42,34%)"} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("message missing %q:\n%s", want, msg)
 		}
 	}
 	set.Revision = true
-	if !strings.Contains(Formatter{}.Update(set), "Revisão de dados publicados") {
+	if !strings.Contains(Formatter{}.Update(set), "revisão de dados") {
 		t.Fatal("revision header missing")
 	}
 	set.Revision = false
 	cur.IsFinal = true
-	if !strings.Contains(Formatter{}.Update(set), "Totalização final") {
+	if !strings.Contains(Formatter{}.Update(set), "totalização final") {
 		t.Fatal("final header missing")
 	}
 }
@@ -117,7 +123,10 @@ func TestMessageDoesNotInventTimestamp(t *testing.T) {
 	s := sampleSnapshot()
 	s.TotalizedAt = time.Time{}
 	msg := Formatter{}.Baseline(s)
-	if !strings.Contains(msg, "não informado pela fonte") {
+	if strings.Contains(msg, "atualizado") {
+		t.Fatalf("message invented a timestamp: %s", msg)
+	}
+	if !strings.Contains(msg, "Brasil") {
 		t.Fatalf("message = %s", msg)
 	}
 }
@@ -125,11 +134,11 @@ func TestMessageDoesNotInventTimestamp(t *testing.T) {
 func TestFailureAndRecovery(t *testing.T) {
 	s := sampleSnapshot()
 	msg := Formatter{}.Failure(s, "HTTP <500> & erro", time.Date(2026, 10, 25, 17, 0, 0, 0, time.UTC))
-	if !strings.Contains(msg, "Falha persistente") || !strings.Contains(msg, "HTTP &lt;500&gt; &amp; erro") {
+	if !strings.Contains(msg, "falha na coleta") || !strings.Contains(msg, "HTTP &lt;500&gt; &amp; erro") {
 		t.Fatalf("message = %s", msg)
 	}
 	rec := Formatter{}.Recovery(s, 4)
-	if !strings.Contains(rec, "Coleta recuperada") || !strings.Contains(rec, "4 falha") {
+	if !strings.Contains(rec, "coleta recuperada") || !strings.Contains(rec, "4 falha") {
 		t.Fatalf("message = %s", rec)
 	}
 }
@@ -163,5 +172,20 @@ func TestBuildRowsDeterministic(t *testing.T) {
 		if rows1[i].State != domain.NotifyPending {
 			t.Fatalf("state = %q", rows1[i].State)
 		}
+		if rows1[i].Kind != "text" {
+			t.Fatalf("kind = %q", rows1[i].Kind)
+		}
+	}
+}
+
+func TestPhotoRows(t *testing.T) {
+	now := time.Now()
+	rows := PhotoRows("evt", "<b>Resultado</b>", "/tmp/chart.png", now)
+	if len(rows) != 1 {
+		t.Fatalf("rows = %d", len(rows))
+	}
+	r := rows[0]
+	if r.Kind != "photo" || r.MediaPath != "/tmp/chart.png" || r.ID != "evt-0" || r.Text != "<b>Resultado</b>" {
+		t.Fatalf("row = %+v", r)
 	}
 }

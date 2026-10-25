@@ -89,7 +89,14 @@ para o poller.
 
 ### `internal/notification` + `internal/telegram`
 
-- O formatter gera HTML pt-BR; todos os dados vêm do snapshot e são escapados.
+- O formatter gera mensagens curtas em HTML pt-BR; todos os dados vêm do
+  snapshot e são escapados. O link é a página humana oficial, não o JSON.
+- Com gráficos habilitados, `internal/chart` gera um PNG e o outbox usa
+  `sendPhoto` com a mensagem como legenda; falhas caem para texto.
+- Para eleição federal/Brasil com `TELEGRAM_MAPS=true`, o app busca os 27
+  arquivos `-u.json` de UF (concorrência 4, cache 60s, ETag), calcula o
+  vencedor em cada estado e desenha um mapa do Brasil (malha oficial do IBGE)
+  ao lado das barras dos candidatos. O mapa não altera snapshot/detecção.
 - Mensagens longas são divididas em chunks ≤4096 unidades UTF-16, com IDs
   determinísticos `<eventID>-<n>`.
 - O worker processa linhas devidas, atualiza tentativas/erro/próxima tentativa e

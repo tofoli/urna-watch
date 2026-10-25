@@ -11,8 +11,8 @@ import (
 	"github.com/gpu/urna-watch/internal/format"
 )
 
-// Formatter renders Telegram HTML messages. Every label and value comes from
-// the normalized snapshot; nothing is inferred.
+// Formatter renders Telegram HTML messages. The message is intentionally
+// short: the official page link is the place for full details.
 type Formatter struct {
 	MaxCandidates int
 	MaxChanges    int
@@ -20,14 +20,14 @@ type Formatter struct {
 
 func (f Formatter) maxCandidates() int {
 	if f.MaxCandidates <= 0 {
-		return 10
+		return 5
 	}
 	return f.MaxCandidates
 }
 
 func (f Formatter) maxChanges() int {
 	if f.MaxChanges <= 0 {
-		return 15
+		return 6
 	}
 	return f.MaxChanges
 }
@@ -37,57 +37,61 @@ func header(title string) string {
 }
 
 func (f Formatter) contextBlock(s *domain.Snapshot) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "<b>Eleição:</b> %s\n", format.EscapeHTML(firstNonEmpty(s.Election.ElectionName, "não informada")))
-	fmt.Fprintf(&b, "<b>Abrangência:</b> %s\n", format.EscapeHTML(s.Election.ScopeName))
-	fmt.Fprintf(&b, "<b>Cargo:</b> %s\n", format.EscapeHTML(s.Election.ContestName))
-	fmt.Fprintf(&b, "<b>Turno:</b> %s\n", format.EscapeHTML(s.Election.RoundLabel()))
-	updated := "não informado pela fonte"
-	if !s.TotalizedAt.IsZero() {
-		updated = format.DateTime(s.TotalizedAt) + " (horário de Brasília)"
+	year := electionYear(s)
+	title := s.Election.ContestName
+	if year != "" {
+		title += " · " + year
 	}
-	fmt.Fprintf(&b, "<b>Atualização da fonte:</b> %s", updated)
-	return b.String()
+	title += " · " + s.Election.RoundLabel()
+	line2 := s.Election.ScopeName
+	if !s.TotalizedAt.IsZero() {
+		line2 += " · atualizado " + format.DateTime(s.TotalizedAt)
+	}
+	return "🗳️ <b>" + format.EscapeHTML(title) + "</b>\n" + format.EscapeHTML(line2)
 }
 
 // Baseline renders the single initial summary.
 func (f Formatter) Baseline(s *domain.Snapshot) string {
 	var b strings.Builder
-	b.WriteString(header("Linha de base"))
+	b.WriteString(header("primeiro snapshot"))
 	b.WriteString("\n\n")
 	b.WriteString(f.contextBlock(s))
-	b.WriteString("\n\n<b>Resultados publicados</b>\n")
+	b.WriteString("\n\n")
 	b.WriteString(f.candidatesBlock(s))
 	b.WriteString("\n\n")
 	b.WriteString(f.progressBlock(s))
-	b.WriteString("\n\n")
-	b.WriteString(f.sourceBlock(s))
+	if link := f.sourceBlock(s); link != "" {
+		b.WriteString("\n\n")
+		b.WriteString(link)
+	}
 	return b.String()
 }
 
 // Update renders one detected change set.
 func (f Formatter) Update(set domain.ChangeSet) string {
 	s := set.Current
-	var b strings.Builder
+	title := "atualização"
 	if set.Revision {
-		b.WriteString(header("Revisão de dados publicados"))
+		title = "revisão de dados"
 	} else if s.IsFinal {
-		b.WriteString(header("Totalização final"))
-	} else {
-		b.WriteString(header("Atualização da apuração"))
+		title = "totalização final"
 	}
+	var b strings.Builder
+	b.WriteString(header(title))
 	b.WriteString("\n\n")
 	b.WriteString(f.contextBlock(s))
-	b.WriteString("\n\n<b>Resultados publicados</b>\n")
+	b.WriteString("\n\n")
 	b.WriteString(f.candidatesBlock(s))
 	if changes := f.changesBlock(set); changes != "" {
-		b.WriteString("\n\n<b>Mudanças desde a última atualização</b>\n")
+		b.WriteString("\n\n<b>Mudanças</b>\n")
 		b.WriteString(changes)
 	}
 	b.WriteString("\n\n")
 	b.WriteString(f.progressBlock(s))
-	b.WriteString("\n\n")
-	b.WriteString(f.sourceBlock(s))
+	if link := f.sourceBlock(s); link != "" {
+		b.WriteString("\n\n")
+		b.WriteString(link)
+	}
 	return b.String()
 }
 
@@ -96,7 +100,7 @@ func (f Formatter) candidatesBlock(s *domain.Snapshot) string {
 	limit := f.maxCandidates()
 	for i, c := range s.Candidates {
 		if i >= limit {
-			fmt.Fprintf(&b, "\n… e mais %d candidato(s). Consulte a fonte oficial.", len(s.Candidates)-limit)
+			fmt.Fprintf(&b, "\n… e mais %d candidato(s)", len(s.Candidates)-limit)
 			break
 		}
 		name := format.EscapeHTML(c.DisplayName())
@@ -108,9 +112,11 @@ func (f Formatter) candidatesBlock(s *domain.Snapshot) string {
 		if pct == "" {
 			pct = format.PercentNano(c.PercentNano)
 		}
-		fmt.Fprintf(&b, "%d. %s%s — %s (%s%%)", c.Position, name, party, format.Votes(c.Votes.OrZero()), format.EscapeHTML(pct))
-		if c.Status != "" {
-			fmt.Fprintf(&b, " — %s", format.EscapeHTML(c.Status))
+		fmt.Fprintf(&b, "%d. <b>%s</b>%s — %s%% · %s votos",
+			c.Position, name, party, format.EscapeHTML(pct), format.Votes(c.Votes.OrZero()))
+		if status := candidateSuffix(c); status != "" {
+			b.WriteString(" · ")
+			b.WriteString(status)
 		}
 		if i < limit-1 {
 			b.WriteString("\n")
@@ -119,143 +125,184 @@ func (f Formatter) candidatesBlock(s *domain.Snapshot) string {
 	return strings.TrimRight(b.String(), "\n")
 }
 
+func candidateSuffix(c domain.Candidate) string {
+	if c.Elected != nil && *c.Elected {
+		return "✅ eleito"
+	}
+	if strings.TrimSpace(c.Status) != "" {
+		return format.EscapeHTML(strings.TrimSpace(c.Status))
+	}
+	return ""
+}
+
+type changeLine struct {
+	order   int
+	text    string
+	hasText bool
+}
+
 func (f Formatter) changesBlock(set domain.ChangeSet) string {
-	if len(set.Items) == 0 {
+	if !set.Changed || set.Current == nil {
 		return ""
 	}
-	var b strings.Builder
-	limit := f.maxChanges()
-	shown := 0
-	for _, item := range set.Items {
-		if shown >= limit {
-			fmt.Fprintf(&b, "… e mais %d alteração(ões).", len(set.Items)-limit)
-			break
+	current := make(map[string]domain.Candidate, len(set.Current.Candidates))
+	for _, c := range set.Current.Candidates {
+		current[c.Number] = c
+	}
+	lines := make([]changeLine, 0, len(set.Items))
+	seen := map[string]int{}
+	add := func(key, text string) {
+		if text == "" {
+			return
 		}
-		line := changeLine(item)
-		if line == "" {
+		if idx, ok := seen[key]; ok {
+			lines[idx].text = text
+			lines[idx].hasText = true
+			return
+		}
+		seen[key] = len(lines)
+		lines = append(lines, changeLine{order: len(lines), text: text, hasText: true})
+	}
+	for _, item := range set.Items {
+		switch item.Kind {
+		case domain.KindVotes:
+			c := current[item.CandidateNumber]
+			pct := c.PercentText
+			if pct == "" {
+				pct = format.PercentNano(c.PercentNano)
+			}
+			sign := "+"
+			delta := item.Delta
+			if delta < 0 {
+				sign = "-"
+				delta = -delta
+			}
+			add("vote-"+item.CandidateNumber, fmt.Sprintf("• %s %s%s (%s%%)",
+				format.EscapeHTML(item.CandidateName), sign, format.Votes(delta), format.EscapeHTML(pct)))
+		case domain.KindPercent:
+			add("pct-"+item.CandidateNumber, fmt.Sprintf("• %s: %s → %s",
+				format.EscapeHTML(item.CandidateName), item.Previous, item.Current))
+		case domain.KindCandidateIn:
+			add("in-"+item.CandidateNumber, "• entrou: "+format.EscapeHTML(item.CandidateName))
+		case domain.KindCandidateOut:
+			add("out-"+item.CandidateNumber, "• saiu: "+format.EscapeHTML(item.CandidateName))
+		case domain.KindStatus:
+			if item.Previous == "situação não informada" && item.Current == "" {
+				continue
+			}
+			add("status-"+item.CandidateNumber, fmt.Sprintf("• %s: %s → %s",
+				format.EscapeHTML(item.CandidateName), format.EscapeHTML(item.Previous), format.EscapeHTML(item.Current)))
+		}
+	}
+	if set.Previous != nil && set.Previous.SectionsCounted.Known && set.Current.SectionsCounted.Known {
+		prev := set.Previous.SectionsCounted.Value
+		cur := set.Current.SectionsCounted.Value
+		if prev != cur {
+			delta := cur - prev
+			sign := "+"
+			if delta < 0 {
+				sign = "-"
+				delta = -delta
+			}
+			add("sections", fmt.Sprintf("• Seções %s%s (%s%%)", sign, format.Votes(delta), format.PercentNano(set.Current.SectionsPercentNano)))
+		}
+	}
+	shown := 0
+	var b strings.Builder
+	for _, line := range lines {
+		if !line.hasText {
 			continue
+		}
+		if shown >= f.maxChanges() {
+			fmt.Fprintf(&b, "\n… e mais %d mudança(s)", len(lines)-shown)
+			break
 		}
 		if shown > 0 {
 			b.WriteString("\n")
 		}
-		b.WriteString("• ")
-		b.WriteString(line)
+		b.WriteString(line.text)
 		shown++
 	}
-	return b.String()
-}
-
-func changeLine(item domain.Change) string {
-	switch item.Kind {
-	case domain.KindVotes:
-		name := format.EscapeHTML(item.CandidateName)
-		sign := ""
-		if item.Delta > 0 {
-			sign = "+"
-		}
-		line := fmt.Sprintf("%s: %s → %s (%s%s votos)", name, item.Previous, item.Current, sign, format.Votes(item.Delta))
-		if item.PreviousPosition > 0 && item.CurrentPosition > 0 && item.PreviousPosition != item.CurrentPosition {
-			line += fmt.Sprintf("; posição %d → %d", item.PreviousPosition, item.CurrentPosition)
-		}
-		return line
-	case domain.KindPercent:
-		return fmt.Sprintf("%s: %s → %s", format.EscapeHTML(item.CandidateName), item.Previous, item.Current)
-	case domain.KindPosition:
-		return fmt.Sprintf("%s: posição %s → %s", format.EscapeHTML(item.CandidateName), item.Previous, item.Current)
-	case domain.KindStatus:
-		return fmt.Sprintf("%s: situação %s → %s", format.EscapeHTML(item.CandidateName), format.EscapeHTML(item.Previous), format.EscapeHTML(item.Current))
-	case domain.KindCandidateIn:
-		return fmt.Sprintf("%s entrou na lista (%s)", format.EscapeHTML(item.CandidateName), item.Current)
-	case domain.KindCandidateOut:
-		return fmt.Sprintf("%s saiu da lista (%s)", format.EscapeHTML(item.CandidateName), item.Previous)
-	case domain.KindSections:
-		if strings.Contains(item.Previous, "seções") {
-			return fmt.Sprintf("%s → %s", item.Previous, item.Current)
-		}
-		return fmt.Sprintf("percentual de seções: %s → %s", item.Previous, item.Current)
-	case domain.KindTotals:
-		return fmt.Sprintf("%s → %s", item.Previous, item.Current)
-	case domain.KindPublication:
-		return fmt.Sprintf("%s → %s", item.Previous, item.Current)
-	case domain.KindFinal:
-		return fmt.Sprintf("estado: %s → %s", item.Previous, item.Current)
-	default:
-		return ""
+	if shown == 0 && set.Revision {
+		return "• O TSE revisou números já publicados."
 	}
+	return b.String()
 }
 
 func (f Formatter) progressBlock(s *domain.Snapshot) string {
-	var b strings.Builder
-	b.WriteString("<b>Apuração:</b> ")
-	b.WriteString(format.EscapeHTML(s.StateLabel()))
-	if s.SectionsCounted.Known && s.SectionsTotal.Known {
-		fmt.Fprintf(&b, "\nSeções totalizadas: %s de %s", format.Votes(s.SectionsCounted.Value), format.Votes(s.SectionsTotal.Value))
-		if s.SectionsPercentNano > 0 || s.SectionsCounted.Value > 0 {
-			fmt.Fprintf(&b, " (%s%%)", format.PercentNano(s.SectionsPercentNano))
-		}
+	if s.IsFinal {
+		return "🏁 <b>Totalização final</b> informada pelo TSE"
 	}
-	if s.Totals.ValidVotes.Known {
-		fmt.Fprintf(&b, "\nVotos válidos: %s", format.Votes(s.Totals.ValidVotes.Value))
+	if s.SectionsCounted.Known && s.SectionsTotal.Known && s.SectionsTotal.Value > 0 {
+		return fmt.Sprintf("<b>Apuração:</b> %s%% das seções totalizadas (%s de %s)",
+			format.PercentNano(s.SectionsPercentNano),
+			format.Votes(s.SectionsCounted.Value),
+			format.Votes(s.SectionsTotal.Value))
 	}
-	if s.Totals.BlankVotes.Known {
-		fmt.Fprintf(&b, " · Brancos: %s", format.Votes(s.Totals.BlankVotes.Value))
-	}
-	if s.Totals.NullVotes.Known {
-		fmt.Fprintf(&b, " · Nulos: %s", format.Votes(s.Totals.NullVotes.Value))
-	}
-	return b.String()
+	return "<b>Apuração:</b> em andamento (progresso não informado)"
 }
 
 func (f Formatter) sourceBlock(s *domain.Snapshot) string {
-	url := s.SourceURL
+	url := strings.TrimSpace(s.Election.SourcePage)
 	if url == "" {
-		url = s.Election.SourcePage
+		return ""
 	}
-	if url == "" {
-		return "Fonte oficial: TSE"
-	}
-	return "Fonte oficial: " + format.EscapeHTML(url)
+	return `<a href="` + format.EscapeHTML(url) + `">Ver no site do TSE</a>`
 }
 
-// Failure renders a persistent collection failure. Error text is already
-// sanitized by the caller.
+// Failure renders a persistent collection failure.
 func (f Formatter) Failure(s *domain.Snapshot, errText string, since time.Time) string {
 	var b strings.Builder
-	b.WriteString(header("Falha persistente na coleta"))
+	b.WriteString(header("falha na coleta"))
 	b.WriteString("\n\n")
+	b.WriteString("Não foi possível atualizar os resultados")
+	if !since.IsZero() {
+		b.WriteString(" desde " + format.DateTime(since))
+	}
+	b.WriteString(".\nO último dado válido continua disponível.")
+	if strings.TrimSpace(errText) != "" {
+		b.WriteString("\n\n<b>Motivo:</b> " + format.EscapeHTML(strings.TrimSpace(errText)))
+	}
 	if s != nil {
-		b.WriteString(f.contextBlock(s))
-		b.WriteString("\n\n")
+		if link := f.sourceBlock(s); link != "" {
+			b.WriteString("\n\n")
+			b.WriteString(link)
+		}
 	}
-	b.WriteString("<b>Última coleta bem-sucedida:</b> ")
-	if since.IsZero() {
-		b.WriteString("não registrada")
-	} else {
-		b.WriteString(format.DateTime(since))
-	}
-	b.WriteString("\n<b>Erro:</b> ")
-	b.WriteString(format.EscapeHTML(errText))
-	b.WriteString("\n\nOs dados exibidos continuam sendo o último snapshot válido. A coleta será retentada automaticamente.")
 	return b.String()
 }
 
 // Recovery renders recovery after a failure streak.
 func (f Formatter) Recovery(s *domain.Snapshot, failures int) string {
 	var b strings.Builder
-	b.WriteString(header("Coleta recuperada"))
+	b.WriteString(header("coleta recuperada"))
 	b.WriteString("\n\n")
+	fmt.Fprintf(&b, "A coleta voltou a responder após %d falha(s).\n\n", failures)
 	b.WriteString(f.contextBlock(s))
-	fmt.Fprintf(&b, "\n\nA coleta voltou a responder após %d falha(s) consecutiva(s).", failures)
+	b.WriteString("\n\n")
+	b.WriteString(f.candidatesBlock(s))
 	b.WriteString("\n\n")
 	b.WriteString(f.progressBlock(s))
+	if link := f.sourceBlock(s); link != "" {
+		b.WriteString("\n\n")
+		b.WriteString(link)
+	}
 	return b.String()
 }
 
-func firstNonEmpty(values ...string) string {
-	for _, v := range values {
-		if strings.TrimSpace(v) != "" {
-			return v
-		}
+func electionYear(s *domain.Snapshot) string {
+	if s == nil {
+		return ""
+	}
+	if !s.TotalizedAt.IsZero() {
+		return fmt.Sprintf("%d", s.TotalizedAt.Year())
+	}
+	if !s.GeneratedAt.IsZero() {
+		return fmt.Sprintf("%d", s.GeneratedAt.Year())
+	}
+	cycle := strings.TrimPrefix(s.Election.Cycle, "ele")
+	if len(cycle) == 4 {
+		return cycle
 	}
 	return ""
 }

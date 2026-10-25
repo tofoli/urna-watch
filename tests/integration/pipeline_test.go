@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -274,17 +275,39 @@ func TestPipelineTelegramDelivery(t *testing.T) {
 	type tgMessage struct {
 		ChatID string `json:"chat_id"`
 		Text   string `json:"text"`
+		Photo  bool   `json:"-"`
 	}
 	received := make(chan tgMessage, 4)
 	tg := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/bot123:test/sendMessage" {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/sendPhoto"):
+			if err := r.ParseMultipartForm(8 << 20); err != nil {
+				t.Errorf("telegram multipart: %v", err)
+				http.Error(w, "bad form", http.StatusBadRequest)
+				return
+			}
+			file, _, err := r.FormFile("photo")
+			if err != nil {
+				t.Errorf("telegram photo: %v", err)
+				http.Error(w, "no photo", http.StatusBadRequest)
+				return
+			}
+			head := make([]byte, 8)
+			n, _ := io.ReadFull(file, head)
+			file.Close()
+			if n != 8 || !bytes.HasPrefix(head, []byte("\x89PNG\r\n\x1a\n")) {
+				t.Errorf("telegram photo is not PNG: %x", head)
+			}
+			received <- tgMessage{ChatID: r.FormValue("chat_id"), Text: r.FormValue("caption"), Photo: true}
+		case strings.HasSuffix(r.URL.Path, "/sendMessage"):
+			var msg tgMessage
+			if err := json.NewDecoder(r.Body).Decode(&msg); err != nil {
+				t.Errorf("telegram body: %v", err)
+			}
+			received <- msg
+		default:
 			t.Errorf("telegram path = %s", r.URL.Path)
 		}
-		var msg tgMessage
-		if err := json.NewDecoder(r.Body).Decode(&msg); err != nil {
-			t.Errorf("telegram body: %v", err)
-		}
-		received <- msg
 		_, _ = w.Write([]byte(`{"ok":true,"result":{"message_id":7}}`))
 	}))
 	defer tg.Close()
@@ -316,7 +339,10 @@ func TestPipelineTelegramDelivery(t *testing.T) {
 	if msg.ChatID != "-100999" {
 		t.Fatalf("chat = %q", msg.ChatID)
 	}
-	for _, want := range []string{"Linha de base", "LULA", "193.574", "Fonte oficial"} {
+	if !msg.Photo {
+		t.Fatal("expected a chart sent via sendPhoto")
+	}
+	for _, want := range []string{"primeiro snapshot", "LULA", "193.574", "Ver no site do TSE"} {
 		if !strings.Contains(msg.Text, want) {
 			t.Fatalf("message missing %q:\n%s", want, msg.Text)
 		}

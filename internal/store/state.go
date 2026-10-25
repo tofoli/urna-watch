@@ -24,6 +24,8 @@ type CacheEntry struct {
 // deterministic chunks, each with its own row and ID.
 type Notification struct {
 	ID            string                    `json:"id"`
+	Kind          string                    `json:"kind,omitempty"` // ""/"text" or "photo"
+	MediaPath     string                    `json:"mediaPath,omitempty"`
 	EventID       string                    `json:"eventId"`
 	Chunk         int                       `json:"chunk"`
 	Chunks        int                       `json:"chunks"`

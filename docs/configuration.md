@@ -76,6 +76,8 @@ um segmento de caminho válido (`[A-Za-z0-9._-]`). Em produção use HTTPS.
 | `TELEGRAM_CHAT_ID` | `telegram.chatId` | vazio |
 | `TELEGRAM_API_BASE` | `telegram.apiBase` | `https://api.telegram.org` |
 | `TELEGRAM_BASELINE` | `telegram.baseline` | `true` |
+| `TELEGRAM_CHARTS` | `telegram.charts` | `true` (gráfico PNG via `sendPhoto`) |
+| `TELEGRAM_MAPS` | `telegram.maps` | `true` (mapa por UF vencedora; 27 arquivos com cache) |
 | `TELEGRAM_FAILURE_ALERTS` | `telegram.failureAlerts` | `true` |
 | `TELEGRAM_RECOVERY_ALERTS` | `telegram.recoveryAlerts` | `true` |
 | `TELEGRAM_MAX_ATTEMPTS` | `telegram.maxAttempts` | `8` |

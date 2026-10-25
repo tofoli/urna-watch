@@ -23,6 +23,8 @@
     "chatId": "",
     "apiBase": "https://api.telegram.org",
     "baseline": true,
+    "charts": true,
+    "maps": true,
     "failureAlerts": true,
     "recoveryAlerts": true,
     "maxAttempts": 8,

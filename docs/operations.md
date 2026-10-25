@@ -81,6 +81,25 @@ UF. `b` volta ao consolidado.
 - Em eleição estadual/municipal o seletor não é oferecido (use `URNA_UF`).
 - O cache em memória da visão é curto (30s) para evitar consultas repetidas.
 
+## Notificações e gráficos
+
+- A mensagem é curta: candidatos principais, mudanças de votos/seções,
+  progresso e link para a página oficial.
+- `TELEGRAM_CHARTS=true` (padrão) envia um PNG via `sendPhoto`, com a mensagem
+  como legenda. O arquivo fica em `<diretório do estado>/media/` até o envio e
+  é removido após sucesso/falha permanente; órfãos com mais de 7 dias são
+  limpos no início.
+- `TELEGRAM_MAPS=true` (padrão) usa o mapa do Brasil por UF vencedora no lugar
+  do gráfico simples. Ele consulta os 27 arquivos de UF a cada atualização
+  (máximo 4 em paralelo, cache de 60s e ETag); se alguma UF falhar, usa o cache
+  anterior ou mostra cinza, sem interromper a coleta/notificação.
+- O mapa pode ficar alguns segundos/minutos atrás do consolidado; o caption
+  mostra a atualização do consolidado.
+- Se não houver votos (início da apuração) ou a legenda passar de 1024
+  unidades UTF-16, o app envia texto normal.
+- `TELEGRAM_CHARTS=false` mantém apenas texto.
+- O link do TSE é a página oficial; o JSON não é enviado a humanos.
+
 ## Snapshot e eventos
 
 - O último snapshot válido nunca é substituído por resposta inválida/mais

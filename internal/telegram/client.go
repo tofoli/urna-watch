@@ -1,5 +1,5 @@
-// Package telegram is a minimal Telegram Bot API client for sendMessage.
-// The bot token is never logged or included in errors.
+// Package telegram is a minimal Telegram Bot API client for sendMessage and
+// sendPhoto. The bot token is never logged or included in errors.
 package telegram
 
 import (
@@ -8,8 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +22,8 @@ import (
 const (
 	DefaultBaseURL        = "https://api.telegram.org"
 	MaxMessageLength      = 4096
+	MaxCaptionLength      = 1024
+	MaxPhotoBytes         = 10 << 20
 	DefaultRequestTimeout = 20 * time.Second
 )
 
@@ -39,6 +44,17 @@ func (e *APIError) Error() string {
 
 // RetryAfterValue lets the notification worker honor Telegram throttling.
 func (e *APIError) RetryAfterValue() time.Duration { return e.RetryAfter }
+
+// IsRetryable reports whether a new attempt can succeed.
+func (e *APIError) IsRetryable() bool { return e.Transient }
+
+// PermanentError marks a local failure that should not be retried (for
+// example, a missing chart file).
+type PermanentError struct{ Err error }
+
+func (e *PermanentError) Error() string     { return e.Err.Error() }
+func (e *PermanentError) Unwrap() error     { return e.Err }
+func (e *PermanentError) IsRetryable() bool { return false }
 
 // Client sends messages to one chat.
 type Client struct {
@@ -113,12 +129,58 @@ func (c *Client) SendMessage(ctx context.Context, text string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	endpoint := c.BaseURL + "/bot" + c.Token + "/sendMessage"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(payload))
+	return c.post(ctx, "sendMessage", bytes.NewReader(payload), "application/json")
+}
+
+// SendPhoto uploads a PNG with an HTML caption. The caption must fit Telegram's
+// 1024 UTF-16 unit photo-caption limit.
+func (c *Client) SendPhoto(ctx context.Context, caption, path string) (int, error) {
+	if utf16Len(caption) > MaxCaptionLength {
+		return 0, fmt.Errorf("legenda com %d unidades UTF-16 excede o limite de %d", utf16Len(caption), MaxCaptionLength)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return 0, &PermanentError{Err: fmt.Errorf("abrir gráfico: %w", err)}
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return 0, &PermanentError{Err: fmt.Errorf("inspecionar gráfico: %w", err)}
+	}
+	if info.Size() > MaxPhotoBytes {
+		return 0, &PermanentError{Err: fmt.Errorf("gráfico excede %d bytes", MaxPhotoBytes)}
+	}
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	if err := w.WriteField("chat_id", c.ChatID); err != nil {
+		return 0, err
+	}
+	if err := w.WriteField("caption", caption); err != nil {
+		return 0, err
+	}
+	if err := w.WriteField("parse_mode", "HTML"); err != nil {
+		return 0, err
+	}
+	part, err := w.CreateFormFile("photo", filepath.Base(path))
+	if err != nil {
+		return 0, err
+	}
+	if _, err := io.Copy(part, f); err != nil {
+		return 0, err
+	}
+	if err := w.Close(); err != nil {
+		return 0, err
+	}
+	return c.post(ctx, "sendPhoto", &buf, w.FormDataContentType())
+}
+
+func (c *Client) post(ctx context.Context, method string, body io.Reader, contentType string) (int, error) {
+	endpoint := c.BaseURL + "/bot" + c.Token + "/" + method
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, body)
 	if err != nil {
 		return 0, fmt.Errorf("montar requisição Telegram: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "urna-watch/0.1")
 	resp, err := c.HTTP.Do(req)
@@ -126,9 +188,9 @@ func (c *Client) SendMessage(ctx context.Context, text string) (int, error) {
 		return 0, fmt.Errorf("falha de rede ao enviar ao Telegram: %s", c.redact(err.Error()))
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
+	data, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 	var env apiEnvelope
-	_ = json.Unmarshal(body, &env)
+	_ = json.Unmarshal(data, &env)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 || !env.OK {
 		code := env.ErrorCode
 		if code == 0 {
@@ -136,7 +198,7 @@ func (c *Client) SendMessage(ctx context.Context, text string) (int, error) {
 		}
 		desc := strings.TrimSpace(env.Description)
 		if desc == "" {
-			desc = strings.TrimSpace(string(body))
+			desc = strings.TrimSpace(string(data))
 			if desc == "" {
 				desc = http.StatusText(resp.StatusCode)
 			}

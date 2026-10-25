@@ -136,6 +136,42 @@ tela, revogue e gere outro no BotFather.
 curl -sS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe" | jq .
 ```
 
+## Notificações
+
+As mensagens são curtas e pensadas para leitura no celular:
+
+```text
+📊 Urna Watch — atualização
+
+🗳️ Presidente · 2026 · 2º turno
+Brasil · atualizado 25/10/2026 19:10:32
+
+1. LULA (PT) — 52,13% · 1.068.370 votos
+2. FLAVIO BOLSONARO (PL) — 47,87% · 981.000 votos
+
+Mudanças
+• LULA +27.610 (52,13%)
+• Seções +213 (1,65%)
+
+Apuração: 1,65% das seções totalizadas (8.218 de 499.248)
+
+Ver no site do TSE
+```
+
+- O link é sempre a **página humana oficial** do TSE, nunca o JSON.
+- Totais secundários (válidos/brancos/nulos/abstenção) continuam no painel da
+  TUI, mas não poluem o Telegram.
+- Com `TELEGRAM_CHARTS=true` (padrão), a mensagem é enviada como **foto com
+  legenda**. Em eleição federal/Brasil, com `TELEGRAM_MAPS=true` (padrão), a
+  imagem é um painel no estilo TV: barras dos candidatos + **mapa do Brasil
+  colorido pelo candidato vencedor em cada UF**. Sem dados de mapa, usa o
+  gráfico de barras; sem votos, usa texto.
+- Se a legenda exceder 1024 unidades UTF-16, o app envia texto normal.
+- `TELEGRAM_CHARTS=false` desabilita imagens; `TELEGRAM_MAPS=false` mantém o
+  gráfico de barras, mas não busca as 27 UFs.
+- O mapa busca os arquivos oficiais das 27 UFs com concorrência limitada, cache
+  de 60s e ETag. Estados sem votos ficam cinza; pode haver defasagem entre UFs.
+
 ## TUI
 
 ```text
@@ -155,7 +191,8 @@ OK · coleta há 12s · próxima há 1m48s · HTTP 304 · Telegram em dia
 - `q`: sair
 - Mouse: clique nas linhas e use a roda para rolar.
 
-A visão por UF é carregada sob demanda do arquivo oficial da UF, é somente
+A escolha de UF é feita **na própria TUI** (tecla `u`), sem variável de
+ambiente. A visão por UF é carregada sob demanda do arquivo oficial da UF, é somente
 leitura e **não** altera a linha de base, os eventos nem as notificações do
 consolidado Brasil. Ela pode ficar defasada em relação ao consolidado; o painel
 mostra o horário da carga e a fonte.
@@ -230,6 +267,7 @@ um pipeline completo com servidores simulados.
 ## Documentação
 
 - [Pesquisa da fonte](docs/research/tse-data-source.md)
+- [Malha do mapa](docs/research/brazil-map.md)
 - [Arquitetura](docs/architecture.md) · [ADRs](docs/adr/README.md)
 - [Configuração](docs/configuration.md) · [Desenvolvimento](docs/development.md)
 - [Operação](docs/operations.md) · [Troubleshooting](docs/troubleshooting.md)
@@ -245,6 +283,9 @@ um pipeline completo com servidores simulados.
 - Apenas dados de 2026 foram validados; 2024 retornou 404 nos caminhos testados.
 - O MVP não alterna eleições em tempo de execução; use outra instância/estado.
 - A visão por UF é por demanda e não é persistida; ela não gera notificações.
+- O mapa do Telegram depende de 27 arquivos de UF e pode refletir uma geração
+  ligeiramente diferente do consolidado Brasil. Ele mostra a UF com mais votos
+  por candidato; não é projeção nem declaração de eleito.
 - A variação “desde o snapshot anterior” some após reinício (não é persistida
   como histórico de deltas; o snapshot e os eventos são).
 - Município: URL validada, mas a coerência código↔UF é delegada ao 404 da fonte.

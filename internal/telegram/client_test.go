@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -131,5 +133,57 @@ func TestSplitMessageLongLine(t *testing.T) {
 	}
 	if strings.Join(chunks, "") != text {
 		t.Fatal("content changed")
+	}
+}
+
+func TestSendPhotoSuccess(t *testing.T) {
+	var gotChat, gotCaption, gotMode string
+	var gotBytes []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/bot123:secret/sendPhoto" {
+			t.Errorf("path = %s", r.URL.Path)
+		}
+		if err := r.ParseMultipartForm(1 << 20); err != nil {
+			t.Errorf("multipart: %v", err)
+		}
+		gotChat = r.FormValue("chat_id")
+		gotCaption = r.FormValue("caption")
+		gotMode = r.FormValue("parse_mode")
+		f, _, err := r.FormFile("photo")
+		if err != nil {
+			t.Errorf("photo: %v", err)
+		} else {
+			gotBytes, _ = io.ReadAll(f)
+			f.Close()
+		}
+		_, _ = w.Write([]byte(`{"ok":true,"result":{"message_id":9}}`))
+	}))
+	defer srv.Close()
+	path := filepath.Join(t.TempDir(), "chart.png")
+	if err := os.WriteFile(path, []byte("PNGDATA"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	c, _ := New("123:secret", "-100123", srv.URL, nil)
+	id, err := c.SendPhoto(context.Background(), "<b>Resultado</b>", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id != 9 || gotChat != "-100123" || gotCaption != "<b>Resultado</b>" || gotMode != "HTML" {
+		t.Fatalf("id=%d chat=%q caption=%q mode=%q", id, gotChat, gotCaption, gotMode)
+	}
+	if string(gotBytes) != "PNGDATA" {
+		t.Fatalf("photo bytes = %q", gotBytes)
+	}
+}
+
+func TestSendPhotoCaptionAndFileErrors(t *testing.T) {
+	c, _ := New("123:secret", "-100123", "https://example.test", nil)
+	if _, err := c.SendPhoto(context.Background(), strings.Repeat("x", MaxCaptionLength+1), "/tmp/x"); err == nil {
+		t.Fatal("expected caption error")
+	}
+	_, err := c.SendPhoto(context.Background(), "x", filepath.Join(t.TempDir(), "missing.png"))
+	var perm *PermanentError
+	if !errors.As(err, &perm) || perm.IsRetryable() {
+		t.Fatalf("error = %T %v", err, err)
 	}
 }

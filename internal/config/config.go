@@ -46,6 +46,8 @@ type Telegram struct {
 	ChatID         string   `json:"chatId"`
 	APIBase        string   `json:"apiBase"`
 	Baseline       bool     `json:"baseline"`
+	Charts         bool     `json:"charts"`
+	Maps           bool     `json:"maps"`
 	FailureAlerts  bool     `json:"failureAlerts"`
 	RecoveryAlerts bool     `json:"recoveryAlerts"`
 	MaxAttempts    int      `json:"maxAttempts"`
@@ -116,6 +118,8 @@ type fileConfig struct {
 		ChatID         *string   `json:"chatId"`
 		APIBase        *string   `json:"apiBase"`
 		Baseline       *bool     `json:"baseline"`
+		Charts         *bool     `json:"charts"`
+		Maps           *bool     `json:"maps"`
 		FailureAlerts  *bool     `json:"failureAlerts"`
 		RecoveryAlerts *bool     `json:"recoveryAlerts"`
 		MaxAttempts    *int      `json:"maxAttempts"`
@@ -149,6 +153,8 @@ func Default() Config {
 			Enabled:        false,
 			APIBase:        "https://api.telegram.org",
 			Baseline:       true,
+			Charts:         true,
+			Maps:           true,
 			FailureAlerts:  true,
 			RecoveryAlerts: true,
 			MaxAttempts:    8,
@@ -257,6 +263,12 @@ func applyFile(cfg *Config, r fileConfig) {
 		}
 		if r.Telegram.Baseline != nil {
 			t.Baseline = *r.Telegram.Baseline
+		}
+		if r.Telegram.Charts != nil {
+			t.Charts = *r.Telegram.Charts
+		}
+		if r.Telegram.Maps != nil {
+			t.Maps = *r.Telegram.Maps
 		}
 		if r.Telegram.FailureAlerts != nil {
 			t.FailureAlerts = *r.Telegram.FailureAlerts
@@ -371,6 +383,12 @@ func applyEnv(cfg *Config) error {
 		return err
 	}
 	if err := boolEnv("TELEGRAM_BASELINE", &cfg.Telegram.Baseline); err != nil {
+		return err
+	}
+	if err := boolEnv("TELEGRAM_CHARTS", &cfg.Telegram.Charts); err != nil {
+		return err
+	}
+	if err := boolEnv("TELEGRAM_MAPS", &cfg.Telegram.Maps); err != nil {
 		return err
 	}
 	if err := boolEnv("TELEGRAM_FAILURE_ALERTS", &cfg.Telegram.FailureAlerts); err != nil {

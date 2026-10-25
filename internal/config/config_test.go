@@ -122,3 +122,21 @@ func TestMunicipalityScopeIsPadded(t *testing.T) {
 		t.Fatalf("municipality = %q", got)
 	}
 }
+
+func TestChartsDefaultAndEnv(t *testing.T) {
+	cfg := Default()
+	if !cfg.Telegram.Charts {
+		t.Fatal("charts should default to true")
+	}
+	t.Setenv("TELEGRAM_CHARTS", "false")
+	loaded, err := Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Telegram.Charts {
+		t.Fatal("TELEGRAM_CHARTS=false ignored")
+	}
+	if !loaded.Telegram.Maps {
+		t.Fatal("maps should default to true")
+	}
+}

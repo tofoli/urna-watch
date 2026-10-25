@@ -26,6 +26,11 @@ adheres to [Semantic Versioning](https://semver.org/lang/pt-BR/).
   outbox.
 - Telegram HTML messages, long-message splitting, retries, rate-limit handling
   and token redaction.
+- Short, user-focused Telegram messages with the official human results page.
+- Optional PNG bar charts sent as Telegram photos (`TELEGRAM_CHARTS`).
+- Brazil map dashboard coloured by the winning candidate in each state
+  (`TELEGRAM_MAPS`), using the official IBGE state mesh.
+- In-TUI UF selector for on-demand results by state.
 - Bubble Tea / Lip Gloss dashboard with keyboard and mouse interaction,
   responsive layout, details, event history, on-demand UF breakdown and
   headless mode.
