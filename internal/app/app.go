@@ -301,6 +301,8 @@ func (a *App) Status() observability.Status {
 	a.mu.Unlock()
 	events := make([]domain.EventRecord, len(st.Events))
 	copy(events, st.Events)
+	history := make([]domain.HistoryPoint, len(st.History))
+	copy(history, st.History)
 	poll := a.poller.Metrics()
 	if st.Failures > 0 {
 		poll.ConsecutiveFailures = st.Failures
@@ -325,6 +327,7 @@ func (a *App) Status() observability.Status {
 		PreviousSnapshot: a.previousSnapshot(),
 		UFView:           a.ufViewCopy(),
 		Map:              a.mapViewCopy(),
+		History:          history,
 		Events:           events,
 		Poll:             poll,
 		Telegram:         a.notify.Stats(),
@@ -839,6 +842,12 @@ func (a *App) persistSuccess(ctx context.Context, before store.State, res tse.Re
 		st.LastSuccess = now
 		st.Failures = 0
 		st.LastError = ""
+		if newSnapshot != nil {
+			fingerprintChanged := before.Snapshot == nil || newSnapshot.Fingerprint() != before.Snapshot.Fingerprint()
+			if fingerprintChanged || len(st.History) == 0 {
+				st.AddHistory(newSnapshot.HistoryPoint(), 240)
+			}
+		}
 		for _, event := range events {
 			if st.AddEvent(event, a.cfg.RetentionEvents) {
 				for _, row := range rows {

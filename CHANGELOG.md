@@ -34,6 +34,8 @@ adheres to [Semantic Versioning](https://semver.org/lang/pt-BR/).
   wide layout and expandable with `m`.
 - Stable candidate colours: Lula/PT red, Bolsonaro/PL blue, regardless of the
   current position.
+- TUI dispute panel with current percentage-point/vote lead and a persisted
+  local trend chart (up to 240 compact points).
 - Bubble Tea / Lip Gloss dashboard with keyboard and mouse interaction,
   responsive layout, details, event history, on-demand UF breakdown and
   headless mode.

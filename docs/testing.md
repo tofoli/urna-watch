@@ -17,14 +17,14 @@ nem Telegram e **não** exige token. Fixtures reais ficam em
 | --- | --- |
 | `internal/tse` | parsing dos fixtures 6258/6257/6260/6284; JSON inválido; `idg` ausente; votos negativos; `tf=s` com seções pendentes; percentual exato; resolução de config; URLs br/UF/município; escopo inválido; ETag/304; 429/Retry-After; 404; config fora; cache |
 | `internal/detector` | baseline; nenhuma mudança; metadados; votos; percentual; seções/totais; revisão; final; candidato removido; ordem de JSON; situação; ID determinístico |
-| `internal/store` | atomicidade/permissões; reabertura; corrupção; rollback; retenção/dedupe de eventos; fila; due/retry; supressão |
+| `internal/store` | atomicidade/permissões; reabertura; corrupção; rollback; retenção/dedupe de eventos; histórico compacto (retenção/dedupe); fila; due/retry; supressão |
 | `internal/polling` | intervalo mínimo; primeira execução; métricas; erro permanente; retry+sucesso; `Retry-After`; pause/resume; `OnCycle`; 304 |
 | `internal/notification` | mensagem curta com valores reais; link humano (não JSON); atualização/revisão/final; escape HTML; timestamp desconhecido; falha/recuperação; split determinístico; rows de foto |
 | `internal/telegram` | envio; parse mode; `sendPhoto` multipart; 429; erro permanente com token redigido; 5xx; validação; split UTF-16/emoji/linha longa |
 | `internal/chart` | PNG válido/dimensões; barras; mapa com 27 UFs; vencedores por estado; sem votos retorna `ErrNoData` |
 | `internal/config` | defaults; env; JSON estrito; validação; redaction do chat id |
-| `internal/tui` | dimensões 120x40, 100x30, 80x24, 40x12; largura/altura; teclado; mouse/roleta; detalhes; navegação; ajuda; seletor/visão por UF; mapa por UF; snapshot vazio |
-| `tests/integration` | pipeline completo com TSE simulado: baseline, 304, mudança, dedupe, persistência, gráfico via `sendPhoto` no Telegram fake, outbox `sent`, visão por UF e mapa da TUI somente leitura |
+| `internal/tui` | dimensões 120x40, 100x30, 80x24, 40x12; largura/altura; teclado; mouse/roleta; detalhes; navegação; ajuda; seletor/visão por UF; mapa por UF; painel de disputa/histórico; snapshot vazio |
+| `tests/integration` | pipeline completo com TSE simulado: baseline, 304, mudança, dedupe, histórico, persistência, gráfico via `sendPhoto` no Telegram fake, outbox `sent`, visão por UF e mapa da TUI somente leitura |
 
 ## Fixtures
 

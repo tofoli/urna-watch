@@ -45,6 +45,8 @@ Regras de dependência:
 - `tui` só lê `observability.Status` e chama `Pause/Resume/Refresh/SelectUF/LoadMap`
   via interface.
 - A coleta nunca depende da TUI.
+- O painel de disputa/histórico é derivado do snapshot normalizado e persistido
+  de forma compacta; não é uma projeção eleitoral.
 - Evite abstrações genéricas; interfaces pequenas e no ponto de uso.
 
 ## 3. Comandos

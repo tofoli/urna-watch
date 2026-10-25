@@ -57,23 +57,24 @@ type MapView struct {
 // Status is the immutable view consumed by presentation layers. The collection
 // loop builds it while holding its own lock; readers never touch live state.
 type Status struct {
-	Version          string               `json:"version"`
-	StartedAt        time.Time            `json:"startedAt"`
-	Ref              domain.ElectionRef   `json:"ref"`
-	Snapshot         *domain.Snapshot     `json:"snapshot,omitempty"`
-	PreviousSnapshot *domain.Snapshot     `json:"previousSnapshot,omitempty"`
-	UFView           *UFView              `json:"ufView,omitempty"`
-	Map              *MapView             `json:"map,omitempty"`
-	Events           []domain.EventRecord `json:"events"`
-	Poll             polling.Metrics      `json:"poll"`
-	Telegram         notification.Stats   `json:"telegram"`
-	Source           SourceStatus         `json:"source"`
-	Paused           bool                 `json:"paused"`
-	StatePath        string               `json:"statePath"`
-	ConfigPath       string               `json:"configPath,omitempty"`
-	BaseURL          string               `json:"baseUrl"`
-	Environment      string               `json:"environment"`
-	Timezone         string               `json:"timezone"`
-	Error            string               `json:"error,omitempty"`
-	ShuttingDown     bool                 `json:"shuttingDown"`
+	Version          string                `json:"version"`
+	StartedAt        time.Time             `json:"startedAt"`
+	Ref              domain.ElectionRef    `json:"ref"`
+	Snapshot         *domain.Snapshot      `json:"snapshot,omitempty"`
+	PreviousSnapshot *domain.Snapshot      `json:"previousSnapshot,omitempty"`
+	UFView           *UFView               `json:"ufView,omitempty"`
+	Map              *MapView              `json:"map,omitempty"`
+	History          []domain.HistoryPoint `json:"history,omitempty"`
+	Events           []domain.EventRecord  `json:"events"`
+	Poll             polling.Metrics       `json:"poll"`
+	Telegram         notification.Stats    `json:"telegram"`
+	Source           SourceStatus          `json:"source"`
+	Paused           bool                  `json:"paused"`
+	StatePath        string                `json:"statePath"`
+	ConfigPath       string                `json:"configPath,omitempty"`
+	BaseURL          string                `json:"baseUrl"`
+	Environment      string                `json:"environment"`
+	Timezone         string                `json:"timezone"`
+	Error            string                `json:"error,omitempty"`
+	ShuttingDown     bool                  `json:"shuttingDown"`
 }

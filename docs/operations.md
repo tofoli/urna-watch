@@ -92,6 +92,21 @@ independentemente da posição. `m` ou `esc` fecha. O mapa é somente leitura e 
 estado durável ou as notificações. O `TELEGRAM_MAPS` só controla o mapa
 enviado ao Telegram; o mapa da TUI não depende dele.
 
+## Painel de disputa
+
+Abaixo da tabela de candidatos, a TUI mostra um painel **DISPUTA — BRASIL** com:
+
+- percentual de cada um dos dois primeiros;
+- vantagem atual em pontos percentuais e em votos;
+- gráfico histórico da diferença (`candidato A − candidato B`) desde a primeira
+  coleta desta versão.
+
+O histórico é limitado a 240 pontos e fica no estado JSON. Ele é atualizado
+quando os dados normalizados mudam; 304/metadados não criam pontos. Em caso de
+virada, as barras mudam de cor conforme o candidato que lidera no momento.
+O gráfico só aparece em terminais largos; em terminais estreitos a vantagem
+atual continua no painel de apuração.
+
 ## Notificações e gráficos
 
 - A mensagem é curta: candidatos principais, mudanças de votos/seções,

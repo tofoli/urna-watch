@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -363,5 +364,36 @@ func TestMapAppearsOnInitialWideScreen(t *testing.T) {
 	}
 	if !strings.Contains(view, "LULA") || !strings.Contains(view, "FLAVIO BOLSONARO") {
 		t.Fatalf("map legend missing:\n%s", view)
+	}
+}
+
+func TestHistoryPanelAndGap(t *testing.T) {
+	m, src := newFakeModel()
+	base := time.Now().Add(-20 * time.Minute)
+	for i := 0; i < 8; i++ {
+		src.st.History = append(src.st.History, domain.HistoryPoint{
+			DetectedAt:    base.Add(time.Duration(i) * time.Minute),
+			SourceVersion: fmt.Sprintf("v%d", i),
+			Candidates: []domain.HistoryCandidate{
+				{Number: "13", Name: "LULA", PercentNano: 50_000_000_000 + int64(i)*300_000_000},
+				{Number: "22", Name: "FLAVIO BOLSONARO", PercentNano: 50_000_000_000 - int64(i)*300_000_000},
+			},
+		})
+	}
+	m.width, m.height = 120, 40
+	m.Update(tickMsg(time.Now()))
+	view := m.View()
+	for _, want := range []string{"DISPUTA", "LULA", "FLAVIO BOLSONARO", "p.p.", "Diferença", "atualizações"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("history view missing %q:\n%s", want, view)
+		}
+	}
+}
+
+func TestResampleDiff(t *testing.T) {
+	points := []disputePoint{{diff: -100}, {diff: 100}}
+	got := resampleDiff(points, 3)
+	if got[0] != -100 || got[1] != 0 || got[2] != 100 {
+		t.Fatalf("resample = %v", got)
 	}
 }

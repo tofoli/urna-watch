@@ -174,6 +174,9 @@ func TestPipelineBaselineChangeAndDedupe(t *testing.T) {
 	if len(state.Events) != 1 || !state.Events[0].Baseline {
 		t.Fatalf("events = %+v", state.Events)
 	}
+	if len(state.History) != 1 {
+		t.Fatalf("history = %+v", state.History)
+	}
 	if state.Events[0].NotificationStatus != domain.NotifyDisabled {
 		t.Fatalf("status = %q", state.Events[0].NotificationStatus)
 	}
@@ -186,6 +189,9 @@ func TestPipelineBaselineChangeAndDedupe(t *testing.T) {
 	if len(state.Events) != 1 {
 		t.Fatalf("304 created events: %+v", state.Events)
 	}
+	if len(state.History) != 1 {
+		t.Fatalf("304 added history: %+v", state.History)
+	}
 
 	ts.advance(t, 143169)
 	if err := a.ProcessOnce(ctx); err != nil {
@@ -194,6 +200,9 @@ func TestPipelineBaselineChangeAndDedupe(t *testing.T) {
 	state = loadState(t, statePath)
 	if len(state.Events) != 2 {
 		t.Fatalf("events after change = %d", len(state.Events))
+	}
+	if len(state.History) != 2 {
+		t.Fatalf("history after change = %d", len(state.History))
 	}
 	if state.Events[0].Summary == "" || state.Events[0].SourceVersion != "90002" {
 		t.Fatalf("event = %+v", state.Events[0])
@@ -221,7 +230,7 @@ func TestPipelineBaselineChangeAndDedupe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := reopened.Snapshot(); got.Snapshot == nil || len(got.Events) != 2 {
+	if got := reopened.Snapshot(); got.Snapshot == nil || len(got.Events) != 2 || len(got.History) != 2 {
 		t.Fatalf("reopened state = %+v", got)
 	}
 }

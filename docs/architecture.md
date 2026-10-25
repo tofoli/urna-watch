@@ -83,8 +83,9 @@ para o poller.
 - Um `FileStore` single-writer, `sync.Mutex`, estado em memória.
 - Cada `Update` faz cópia, muta, serializa, escreve temp, `fsync`, `rename` e
   `fsync` do diretório.
-- Estado: versão, seleção, snapshot, cache de ETag, eventos (retenção),
-  outbox, contadores de falha.
+- Estado: versão, seleção, snapshot, histórico compacto (até 240 pontos com
+  até 3 candidatos), cache de ETag, eventos (retenção), outbox, contadores de
+  falha.
 - Corrupção falha alto; não há reset silencioso.
 
 ### `internal/notification` + `internal/telegram`
@@ -119,6 +120,9 @@ para o poller.
   e em tela cheia com `m`; `App.LoadMap` reutiliza o cache das 27 UFs e expõe
   `Status.Map`; a TUI rasteriza a malha do IBGE em blocos coloridos. Cores são
   estáveis por candidato (Lula vermelho, Bolsonaro azul), não por posição.
+- Painel de disputa: usa `Status.History` para mostrar percentuais, vantagem
+  atual e um gráfico de barras da diferença (p.p.) entre os dois primeiros.
+  O histórico é compacto e persistido; não é uma cópia integral dos snapshots.
 - Sempre mostra “em apuração”/“totalização final” conforme `tf`; nunca inventa
   progresso.
 - Se stdout não é TTY, o app opera headless.

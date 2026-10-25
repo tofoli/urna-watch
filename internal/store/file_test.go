@@ -142,3 +142,21 @@ func TestSuppressPending(t *testing.T) {
 		t.Fatalf("event = %q", s.Events[0].NotificationStatus)
 	}
 }
+
+func TestHistoryDedupeAndRetention(t *testing.T) {
+	s := State{}
+	now := time.Now()
+	s.Ensure(now)
+	p := domain.HistoryPoint{SourceVersion: "1", Fingerprint: "a", DetectedAt: now}
+	if !s.AddHistory(p, 2) {
+		t.Fatal("first add")
+	}
+	if s.AddHistory(p, 2) {
+		t.Fatal("duplicate add")
+	}
+	s.AddHistory(domain.HistoryPoint{SourceVersion: "2", Fingerprint: "b", DetectedAt: now.Add(time.Second)}, 2)
+	s.AddHistory(domain.HistoryPoint{SourceVersion: "3", Fingerprint: "c", DetectedAt: now.Add(2 * time.Second)}, 2)
+	if len(s.History) != 2 || s.History[1].SourceVersion != "3" {
+		t.Fatalf("history = %+v", s.History)
+	}
+}

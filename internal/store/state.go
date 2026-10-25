@@ -46,6 +46,7 @@ type State struct {
 	UpdatedAt   time.Time             `json:"updatedAt"`
 	Ref         domain.ElectionRef    `json:"ref"`
 	Snapshot    *domain.Snapshot      `json:"snapshot,omitempty"`
+	History     []domain.HistoryPoint `json:"history,omitempty"`
 	Cache       map[string]CacheEntry `json:"cache,omitempty"`
 	Events      []domain.EventRecord  `json:"events,omitempty"`
 	Queue       []Notification        `json:"queue,omitempty"`
@@ -66,6 +67,22 @@ func (s *State) Ensure(now time.Time) {
 	if s.Cache == nil {
 		s.Cache = map[string]CacheEntry{}
 	}
+}
+
+// AddHistory appends a compact history point, deduplicating the current source
+// generation/fingerprint and enforcing the retention window.
+func (s *State) AddHistory(p domain.HistoryPoint, retention int) bool {
+	if len(s.History) > 0 {
+		last := s.History[len(s.History)-1]
+		if last.SourceVersion == p.SourceVersion && last.Fingerprint == p.Fingerprint {
+			return false
+		}
+	}
+	s.History = append(s.History, p)
+	if retention > 0 && len(s.History) > retention {
+		s.History = s.History[len(s.History)-retention:]
+	}
+	return true
 }
 
 // Event returns the event with the given ID.

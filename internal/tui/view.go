@@ -229,13 +229,36 @@ func (m *Model) wideBody(height int) []string {
 		}
 	}
 
-	left, candRows, visible := m.candidatesPanel(leftWidth, height)
+	candHeight := height
+	historyHeight := 0
+	if m.historyAvailable() && height >= 18 {
+		desired := len(m.status.Snapshot.Candidates) + 3
+		if desired < 6 {
+			desired = 6
+		}
+		if maxCand := height - 9; desired > maxCand {
+			desired = maxCand
+		}
+		if desired < 6 {
+			desired = 6
+		}
+		if candidateHistory := height - desired - 1; candidateHistory >= 8 {
+			candHeight = desired
+			historyHeight = candidateHistory
+		}
+	}
+	leftPanel, candRows, visible := m.candidatesPanel(leftWidth, candHeight)
 	m.visibleCandRows = visible
+	left := append([]string(nil), leftPanel...)
+	if historyHeight > 0 {
+		left = append(left, "")
+		left = append(left, m.historyPanel(leftWidth, historyHeight)...)
+	}
 	var rightMap []string
 	if mapHeight > 0 {
 		rightMap = m.mapPanel(rightWidth, mapHeight)
 	}
-	rightTotals := m.totalsPanel(rightWidth, totalsHeight)
+	rightTotals := m.totalsPanel(rightWidth, totalsHeight, historyHeight == 0)
 	rightEvents, eventRows := m.eventsPanel(rightWidth, eventsHeight)
 	totalsStart := 0
 	if mapHeight > 0 {
@@ -283,6 +306,13 @@ func (m *Model) wideBody(height int) []string {
 	return out
 }
 
+func (m *Model) historyAvailable() bool {
+	if m.status.UFView != nil && m.status.UFView.Snapshot != nil {
+		return false
+	}
+	return m.status.Snapshot != nil && len(m.status.Snapshot.Candidates) >= 2
+}
+
 func (m *Model) mapAvailable() bool {
 	s := m.status.Snapshot
 	return s != nil && s.Election.Scope.Kind == domain.ScopeBrazil && strings.EqualFold(s.Election.Level, "federal")
@@ -312,7 +342,7 @@ func (m *Model) stackedBody(height int) []string {
 
 	cand, candRows, visible := m.candidatesPanel(m.width, candHeight)
 	m.visibleCandRows = visible
-	totals := m.totalsPanel(m.width, totalsHeight)
+	totals := m.totalsPanel(m.width, totalsHeight, true)
 	events, eventRows := m.eventsPanel(m.width, eventsHeight)
 
 	out := make([]string, 0, height)
@@ -481,7 +511,7 @@ func (m *Model) candidateRow(cur, prev domain.Candidate, hasPrev bool, width int
 	return plain
 }
 
-func (m *Model) totalsPanel(width, height int) []string {
+func (m *Model) totalsPanel(width, height int, showGap bool) []string {
 	title := "APURAÇÃO"
 	if m.status.UFView != nil && m.status.UFView.Snapshot != nil {
 		title = "APURAÇÃO — " + strings.ToUpper(m.status.UFView.UF)
@@ -504,6 +534,13 @@ func (m *Model) totalsPanel(width, height int) []string {
 		lines = append(lines, mutedStyle.Render(fit("  a coleta inicial criará a linha de base;", width)))
 		lines = append(lines, mutedStyle.Render(fit("  nenhum dado é inventado enquanto isso.", width)))
 		return padLines(lines, height, width)
+	}
+	if showGap {
+		if leader, gapP, gapV, ok := disputeGap(snap); ok {
+			col := lipgloss.Color(chart.CandidateColorHex(leader))
+			text := fmt.Sprintf("  %s +%s p.p. · +%s votos", leader.DisplayName(), format.PercentNano(gapP), format.Votes(gapV))
+			lines = append(lines, lipgloss.NewStyle().Foreground(col).Bold(true).Render(fit(text, width)))
+		}
 	}
 	sections := "  Seções: não informado"
 	if snap.SectionsCounted.Known && snap.SectionsTotal.Known {
