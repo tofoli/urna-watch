@@ -330,3 +330,38 @@ func TestMapView(t *testing.T) {
 		t.Fatal("map view did not close")
 	}
 }
+
+func TestAutoLoadMapOnStartup(t *testing.T) {
+	m, src := newFakeModel()
+	cmd := m.autoLoadMapCmd()
+	if cmd == nil {
+		t.Fatal("expected automatic map load")
+	}
+	cmd()
+	if src.mapLoads != 1 {
+		t.Fatalf("mapLoads = %d", src.mapLoads)
+	}
+	if cmd2 := m.autoLoadMapCmd(); cmd2 != nil {
+		t.Fatal("auto load requested twice for the same source version")
+	}
+}
+
+func TestMapAppearsOnInitialWideScreen(t *testing.T) {
+	m, src := newFakeModel()
+	src.st.Map = &observability.MapView{
+		FetchedAt: time.Now(),
+		States: map[string]observability.MapState{
+			"sp": {UF: "SP", Counted: true, WinnerNumber: "13", PercentText: "60,00"},
+			"rj": {UF: "RJ", Counted: true, WinnerNumber: "22", PercentText: "55,00"},
+		},
+	}
+	m.width, m.height = 120, 40
+	m.Update(tickMsg(time.Now()))
+	view := m.View()
+	if !strings.Contains(view, "MAPA — UF VENCEDORA") {
+		t.Fatalf("initial map missing:\n%s", view)
+	}
+	if !strings.Contains(view, "LULA") || !strings.Contains(view, "FLAVIO BOLSONARO") {
+		t.Fatalf("map legend missing:\n%s", view)
+	}
+}

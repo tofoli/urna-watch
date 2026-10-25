@@ -67,6 +67,7 @@ type Model struct {
 	showMap      bool
 	mapGrid      [][]string
 	mapGridKey   string
+	mapVersion   string
 	detailKind   detailsKind
 	detailIndex  int
 	ufIndex      int
@@ -98,7 +99,39 @@ func Run(ctx context.Context, src Source, cfg config.Config) error {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return tickCmd()
+	return tea.Batch(tickCmd(), m.autoLoadMapCmd())
+}
+
+func (m *Model) autoLoadMapCmd() tea.Cmd {
+	if m.src == nil || m.status.Snapshot == nil {
+		return nil
+	}
+	snap := m.status.Snapshot
+	if snap.Election.Scope.Kind != domain.ScopeBrazil || !strings.EqualFold(snap.Election.Level, "federal") {
+		return nil
+	}
+	mv := m.status.Map
+	if mv != nil && mv.Loading {
+		return nil
+	}
+	need := false
+	switch {
+	case mv == nil:
+		need = m.mapVersion != snap.SourceVersion
+	case mv.Error != "" || mv.FetchedAt.IsZero():
+		need = m.mapVersion != snap.SourceVersion
+	case time.Since(mv.FetchedAt) > 60*time.Second:
+		need = m.mapVersion != snap.SourceVersion
+	}
+	if !need {
+		return nil
+	}
+	m.mapVersion = snap.SourceVersion
+	src := m.src
+	return func() tea.Msg {
+		src.LoadMap()
+		return nil
+	}
 }
 
 func tickCmd() tea.Cmd {
@@ -122,7 +155,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = m.src.Status()
 		}
 		m.clampSelection()
-		return m, tickCmd()
+		return m, tea.Batch(tickCmd(), m.autoLoadMapCmd())
 
 	case tea.KeyMsg:
 		return m.handleKey(msg)

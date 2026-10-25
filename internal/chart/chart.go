@@ -36,13 +36,6 @@ var (
 	mutedColor  = color.RGBA{100, 116, 139, 255}
 	barBgColor  = color.RGBA{226, 232, 240, 255}
 	footerColor = color.RGBA{148, 163, 184, 255}
-	palette     = []color.RGBA{
-		{13, 148, 136, 255},
-		{217, 119, 6, 255},
-		{79, 70, 229, 255},
-		{225, 29, 72, 255},
-		{22, 163, 74, 255},
-	}
 )
 
 // Render returns a PNG with the top candidates. It returns ErrNoData when the
@@ -80,7 +73,7 @@ func Render(s *domain.Snapshot) ([]byte, error) {
 	drawText(img, margin, 134, 20, mutedColor, false, progress)
 
 	y := 186
-	for i, c := range cands {
+	for _, c := range cands {
 		label := fmt.Sprintf("%d. %s", c.Position, c.DisplayName())
 		if c.PartyAcronym != "" {
 			label += " (" + c.PartyAcronym + ")"
@@ -98,7 +91,7 @@ func Render(s *domain.Snapshot) ([]byte, error) {
 		draw.Draw(img, image.Rect(margin, barY, margin+barW, barY+18), image.NewUniform(barBgColor), image.Point{}, draw.Src)
 		fill := int64(barW) * clampPercent(c.PercentNano) / 100_000_000_000
 		if fill > 0 {
-			draw.Draw(img, image.Rect(margin, barY, margin+int(fill), barY+18), image.NewUniform(palette[i%len(palette)]), image.Point{}, draw.Src)
+			draw.Draw(img, image.Rect(margin, barY, margin+int(fill), barY+18), image.NewUniform(CandidateColor(c)), image.Point{}, draw.Src)
 		}
 		y += rowHeight
 	}

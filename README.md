@@ -186,7 +186,7 @@ OK · coleta há 12s · próxima há 1m48s · HTTP 304 · Telegram em dia
 - `enter`: detalhes do candidato/evento
 - `u`: abrir a **visão por UF** (eleição federal)
 - `b`: voltar ao consolidado Brasil
-- `m`: abrir o **mapa do Brasil por UF vencedora** no terminal
+- `m`: abrir o **mapa do Brasil por UF vencedora** em tela cheia
 - `p`: pausar/retomar polling
 - `r`: atualização imediata
 - `h`/`?`: ajuda
@@ -194,7 +194,8 @@ OK · coleta há 12s · próxima há 1m48s · HTTP 304 · Telegram em dia
 - Mouse: clique nas linhas e use a roda para rolar.
 
 A escolha de UF e o mapa são feitos **na própria TUI** (`u` e `m`), sem
-variável de ambiente. A visão por UF é carregada sob demanda do arquivo oficial da UF, é somente
+variável de ambiente. Em terminais com pelo menos 100 colunas, o mapa também
+aparece automaticamente na tela inicial; `m` abre a versão em tela cheia. A visão por UF é carregada sob demanda do arquivo oficial da UF, é somente
 leitura e **não** altera a linha de base, os eventos nem as notificações do
 consolidado Brasil. Ela pode ficar defasada em relação ao consolidado; o painel
 mostra o horário da carga e a fonte.
@@ -285,6 +286,8 @@ um pipeline completo com servidores simulados.
 - Apenas dados de 2026 foram validados; 2024 retornou 404 nos caminhos testados.
 - O MVP não alterna eleições em tempo de execução; use outra instância/estado.
 - A visão por UF é por demanda e não é persistida; ela não gera notificações.
+- Cores fixas por candidato: **Lula/PT em vermelho** e **Bolsonaro/PL em azul**,
+  independentemente da posição atual.
 - O mapa do Telegram depende de 27 arquivos de UF e pode refletir uma geração
   ligeiramente diferente do consolidado Brasil. Ele mostra a UF com mais votos
   por candidato; não é projeção nem declaração de eleito.

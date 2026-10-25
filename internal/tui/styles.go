@@ -21,9 +21,8 @@ var (
 )
 
 var (
-	mapPalette = []lipgloss.Color{"#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7"}
-	mapGray    = lipgloss.Color("#475569")
-	mapOcean   = lipgloss.Color("#0b1220")
+	mapGray  = lipgloss.Color("#475569")
+	mapOcean = lipgloss.Color("#0b1220")
 )
 
 var (

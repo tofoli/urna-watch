@@ -129,3 +129,19 @@ func TestRasterStates(t *testing.T) {
 		t.Fatalf("only %d UFs visible at 100x60: %v", len(seen), seen)
 	}
 }
+
+func TestCandidateColorsAreStable(t *testing.T) {
+	lula := domain.Candidate{Number: "13", PartyAcronym: "PT", Position: 2}
+	bolsonaro := domain.Candidate{Number: "22", PartyAcronym: "PL", Position: 1}
+	if got := CandidateColorHex(lula); got != "#ef4444" {
+		t.Fatalf("Lula color = %s", got)
+	}
+	if got := CandidateColorHex(bolsonaro); got != "#3b82f6" {
+		t.Fatalf("Bolsonaro color = %s", got)
+	}
+	// Position must not change identity colors.
+	lula.Position = 1
+	if CandidateColorHex(lula) != "#ef4444" {
+		t.Fatal("Lula color changed with position")
+	}
+}

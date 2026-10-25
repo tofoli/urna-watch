@@ -83,10 +83,12 @@ UF. `b` volta ao consolidado.
 
 ## Mapa na TUI
 
-Pressione `m` na TUI. O app carrega os 27 arquivos de UF (cache de 60s) e
-desenha o Brasil em blocos coloridos no terminal, usando o mesmo critério do
-mapa do Telegram: cor do candidato com mais votos na UF; cinza sem votos.
-`m` ou `esc` fecha. O mapa é somente leitura e não altera o consolidado, o
+Em terminais com pelo menos 100 colunas, o mapa aparece automaticamente na
+tela inicial. Pressione `m` para abrir em tela cheia. O app carrega os 27
+arquivos de UF (cache de 60s) e desenha o Brasil em blocos coloridos no
+terminal, usando o mesmo critério do mapa do Telegram: cor do candidato com
+mais votos na UF; cinza sem votos. Lula/PT é vermelho e Bolsonaro/PL é azul,
+independentemente da posição. `m` ou `esc` fecha. O mapa é somente leitura e não altera o consolidado, o
 estado durável ou as notificações. O `TELEGRAM_MAPS` só controla o mapa
 enviado ao Telegram; o mapa da TUI não depende dele.
 

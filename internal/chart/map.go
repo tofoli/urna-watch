@@ -34,21 +34,14 @@ const (
 )
 
 var (
-	darkBG          = color.RGBA{8, 15, 30, 255}
-	darkPanel       = color.RGBA{15, 23, 42, 255}
-	darkBorder      = color.RGBA{30, 41, 59, 255}
-	lightText       = color.RGBA{248, 250, 252, 255}
-	softText        = color.RGBA{148, 163, 184, 255}
-	unknownArea     = color.RGBA{71, 85, 105, 255}
-	mapBorder       = color.RGBA{8, 15, 30, 255}
-	candidateColors = []color.RGBA{
-		{239, 68, 68, 255},  // red
-		{59, 130, 246, 255}, // blue
-		{34, 197, 94, 255},  // green
-		{245, 158, 11, 255}, // amber
-		{168, 85, 247, 255}, // purple
-	}
-	ibgeToUF = map[string]string{
+	darkBG      = color.RGBA{8, 15, 30, 255}
+	darkPanel   = color.RGBA{15, 23, 42, 255}
+	darkBorder  = color.RGBA{30, 41, 59, 255}
+	lightText   = color.RGBA{248, 250, 252, 255}
+	softText    = color.RGBA{148, 163, 184, 255}
+	unknownArea = color.RGBA{71, 85, 105, 255}
+	mapBorder   = color.RGBA{8, 15, 30, 255}
+	ibgeToUF    = map[string]string{
 		"11": "RO", "12": "AC", "13": "AM", "14": "RR", "15": "PA", "16": "AP", "17": "TO",
 		"21": "MA", "22": "PI", "23": "CE", "24": "RN", "25": "PB", "26": "PE", "27": "AL",
 		"28": "SE", "29": "BA", "31": "MG", "32": "ES", "33": "RJ", "35": "SP", "41": "PR",
@@ -92,12 +85,8 @@ func RenderMap(main *domain.Snapshot, states map[string]*domain.Snapshot) ([]byt
 		return nil, ErrNoData
 	}
 	colorByNumber := make(map[string]color.RGBA, len(main.Candidates))
-	for i, c := range main.Candidates {
-		if i < len(candidateColors) {
-			colorByNumber[c.Number] = candidateColors[i]
-		} else {
-			colorByNumber[c.Number] = candidateColors[i%len(candidateColors)]
-		}
+	for _, c := range main.Candidates {
+		colorByNumber[c.Number] = CandidateColor(c)
 	}
 	winners := make(map[string]string, len(states))
 	for uf, snap := range states {

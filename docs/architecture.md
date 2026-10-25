@@ -115,8 +115,10 @@ para o poller.
 - Visão por UF sob demanda: `App.SelectUF` busca o `-u.json` da UF em uma
   goroutine separada e expõe um snapshot somente leitura em `Status.UFView`;
   não altera snapshot, detector, outbox ou notificações.
-- Mapa no terminal: `m` chama `App.LoadMap`, que reutiliza o cache das 27 UFs e
-  expõe `Status.Map`; a TUI rasteriza a malha do IBGE em blocos coloridos.
+- Mapa no terminal: carregado automaticamente na tela inicial (>=100 colunas)
+  e em tela cheia com `m`; `App.LoadMap` reutiliza o cache das 27 UFs e expõe
+  `Status.Map`; a TUI rasteriza a malha do IBGE em blocos coloridos. Cores são
+  estáveis por candidato (Lula vermelho, Bolsonaro azul), não por posição.
 - Sempre mostra “em apuração”/“totalização final” conforme `tf`; nunca inventa
   progresso.
 - Se stdout não é TTY, o app opera headless.

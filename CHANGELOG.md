@@ -30,7 +30,10 @@ adheres to [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - Optional PNG bar charts sent as Telegram photos (`TELEGRAM_CHARTS`).
 - Brazil map dashboard coloured by the winning candidate in each state
   (`TELEGRAM_MAPS`), using the official IBGE state mesh.
-- In-TUI UF selector and terminal map of state winners (`m`).
+- In-TUI UF selector and terminal map of state winners, shown on the initial
+  wide layout and expandable with `m`.
+- Stable candidate colours: Lula/PT red, Bolsonaro/PL blue, regardless of the
+  current position.
 - Bubble Tea / Lip Gloss dashboard with keyboard and mouse interaction,
   responsive layout, details, event history, on-demand UF breakdown and
   headless mode.

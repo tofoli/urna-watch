@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/gpu/urna-watch/internal/chart"
 	"github.com/gpu/urna-watch/internal/domain"
 	"github.com/gpu/urna-watch/internal/format"
 )
@@ -44,7 +45,7 @@ func (m *Model) View() string {
 		body = m.mapBody(bodyHeight)
 	case m.showDetails:
 		body = m.detailsBody(bodyHeight)
-	case m.width >= 108:
+	case m.width >= 100:
 		body = m.wideBody(bodyHeight)
 	default:
 		body = m.stackedBody(bodyHeight)
@@ -186,39 +187,61 @@ func (m *Model) wideBody(height int) []string {
 		return m.stackedBody(height)
 	}
 	leftWidth := int(float64(m.width) * 0.63)
-	if leftWidth < 64 {
-		leftWidth = 64
+	if leftWidth < 60 {
+		leftWidth = 60
 	}
-	if leftWidth > 98 {
-		leftWidth = 98
+	if leftWidth > 112 {
+		leftWidth = 112
 	}
 	rightWidth := m.width - leftWidth - 1
-	if rightWidth < 34 {
-		rightWidth = 34
+	if rightWidth < 40 {
+		rightWidth = 40
 		leftWidth = m.width - rightWidth - 1
 	}
-	if leftWidth < 40 {
+	if leftWidth < 40 || rightWidth < 34 {
 		return m.stackedBody(height)
 	}
 
+	mapHeight := 0
 	totalsHeight := 15
 	eventsHeight := height - totalsHeight - 1
 	if eventsHeight < 5 {
 		totalsHeight = height - 6
 		eventsHeight = 5
 	}
-	if totalsHeight < 8 {
-		totalsHeight = 8
-		eventsHeight = height - totalsHeight - 1
-	}
-	if eventsHeight < 4 {
-		return m.stackedBody(height)
+	if m.mapAvailable() {
+		totalsHeight = 10
+		eventsHeight = 4
+		mapHeight = height - totalsHeight - eventsHeight - 2
+		if mapHeight < 8 {
+			totalsHeight = 8
+			eventsHeight = 4
+			mapHeight = height - totalsHeight - eventsHeight - 2
+		}
+		if mapHeight < 6 {
+			mapHeight = 0
+			totalsHeight = 15
+			eventsHeight = height - totalsHeight - 1
+			if eventsHeight < 5 {
+				totalsHeight = height - 6
+				eventsHeight = 5
+			}
+		}
 	}
 
 	left, candRows, visible := m.candidatesPanel(leftWidth, height)
 	m.visibleCandRows = visible
+	var rightMap []string
+	if mapHeight > 0 {
+		rightMap = m.mapPanel(rightWidth, mapHeight)
+	}
 	rightTotals := m.totalsPanel(rightWidth, totalsHeight)
 	rightEvents, eventRows := m.eventsPanel(rightWidth, eventsHeight)
+	totalsStart := 0
+	if mapHeight > 0 {
+		totalsStart = mapHeight + 1
+	}
+	eventBase := totalsStart + totalsHeight + 1
 
 	out := make([]string, 0, height)
 	for i := 0; i < height; i++ {
@@ -228,12 +251,19 @@ func (m *Model) wideBody(height int) []string {
 		}
 		r := ""
 		switch {
-		case i < len(rightTotals):
-			r = rightTotals[i]
-		case i == totalsHeight:
+		case mapHeight > 0 && i < mapHeight:
+			r = rightMap[i]
+		case mapHeight > 0 && i == mapHeight:
+			r = ""
+		case i < totalsStart+totalsHeight:
+			idx := i - totalsStart
+			if idx >= 0 && idx < len(rightTotals) {
+				r = rightTotals[idx]
+			}
+		case i == totalsStart+totalsHeight:
 			r = ""
 		default:
-			idx := i - totalsHeight - 1
+			idx := i - eventBase
 			if idx >= 0 && idx < len(rightEvents) {
 				r = rightEvents[idx]
 			}
@@ -242,13 +272,20 @@ func (m *Model) wideBody(height int) []string {
 			y := headerLineCount + i
 			m.hitboxes = append(m.hitboxes, hitbox{x1: 0, x2: leftWidth - 1, y: y, kind: hitCandidate, index: candidate})
 		}
-		if rel, ok := eventRows[i-totalsHeight-1]; ok && i > totalsHeight {
-			y := headerLineCount + i
-			m.hitboxes = append(m.hitboxes, hitbox{x1: leftWidth + 1, x2: m.width - 1, y: y, kind: hitEvent, index: rel})
+		if idx := i - eventBase; idx >= 0 {
+			if rel, ok := eventRows[idx]; ok {
+				y := headerLineCount + i
+				m.hitboxes = append(m.hitboxes, hitbox{x1: leftWidth + 1, x2: m.width - 1, y: y, kind: hitEvent, index: rel})
+			}
 		}
 		out = append(out, padRight(l, leftWidth)+" "+padRight(r, rightWidth))
 	}
 	return out
+}
+
+func (m *Model) mapAvailable() bool {
+	s := m.status.Snapshot
+	return s != nil && s.Election.Scope.Kind == domain.ScopeBrazil && strings.EqualFold(s.Election.Level, "federal")
 }
 
 func (m *Model) stackedBody(height int) []string {
@@ -359,9 +396,12 @@ func (m *Model) candidateHeader(width int) string {
 		padRight("CANDIDATO", cols.name),
 	}
 	if cols.party > 0 {
-		parts = append(parts, padRight("PARTIDO", cols.party))
+		parts = append(parts, padRight("PART.", cols.party))
 	}
-	parts = append(parts, padLeft("VOTOS", cols.votes), padLeft("%", cols.percent), padLeft("Δ", cols.delta))
+	parts = append(parts, padLeft("VOTOS", cols.votes), padLeft("%", cols.percent))
+	if cols.delta > 0 {
+		parts = append(parts, padLeft("Δ", cols.delta))
+	}
 	if cols.status > 0 {
 		parts = append(parts, padRight("SITUAÇÃO", cols.status))
 	}
@@ -373,21 +413,32 @@ type columns struct {
 }
 
 func candidateColumns(width int) columns {
-	c := columns{pos: 2, number: 4, votes: 12, percent: 6, delta: 8, status: 11, party: 6}
-	used := c.pos + c.number + c.votes + c.percent + c.delta + c.status + 7 // separators (7)
-	if width < 92 {
-		used -= c.status + 1
-		c.status = 0
+	c := columns{pos: 2, number: 4, votes: 12, percent: 6}
+	if width >= 70 {
+		c.party = 6
 	}
-	if width < 82 {
-		used -= c.delta + 1
-		c.delta = 0
+	if width >= 82 {
+		c.delta = 8
 	}
-	if width < 70 {
-		used -= c.party + 1
-		c.party = 0
+	if width >= 92 {
+		c.status = 11
 	}
-	c.name = width - used - 3
+	cols := 5
+	fixed := c.pos + c.number + c.votes + c.percent
+	if c.party > 0 {
+		cols++
+		fixed += c.party
+	}
+	if c.delta > 0 {
+		cols++
+		fixed += c.delta
+	}
+	if c.status > 0 {
+		cols++
+		fixed += c.status
+	}
+	fixed += cols - 1 // separators
+	c.name = width - 2 - fixed
 	if c.name < 8 {
 		c.name = 8
 	}
@@ -412,8 +463,10 @@ func (m *Model) candidateRow(cur, prev domain.Candidate, hasPrev bool, width int
 	parts = append(parts,
 		padLeft(format.Votes(cur.Votes.OrZero()), cols.votes),
 		padLeft(pctText+"%", cols.percent),
-		padLeft(deltaText(cur.Votes, prev.Votes, hasPrev), cols.delta),
 	)
+	if cols.delta > 0 {
+		parts = append(parts, padLeft(deltaText(cur.Votes, prev.Votes, hasPrev), cols.delta))
+	}
 	if cols.status > 0 {
 		parts = append(parts, padRight(status, cols.status))
 	}
@@ -555,17 +608,13 @@ func (m *Model) ufBody(height int) []string {
 func (m *Model) mapBody(height int) []string {
 	title := panelTitle("MAPA — maioria por UF", m.width)
 	mv := m.status.Map
-	if mv == nil {
-		return padLines([]string{title, "", accentStyle.Render("  carregando os 27 arquivos de UF…"), "", mutedStyle.Render("m/esc fechar")}, height, m.width)
-	}
-	if mv.Loading {
+	if mv == nil || mv.Loading {
 		return padLines([]string{title, "", accentStyle.Render("  carregando os 27 arquivos de UF…"), "", mutedStyle.Render("m/esc fechar")}, height, m.width)
 	}
 	if mv.Error != "" {
 		return padLines([]string{title, "", badStyle.Render("  " + fit(mv.Error, m.width-4)), "", mutedStyle.Render("m/esc fechar")}, height, m.width)
 	}
-	main := m.status.Snapshot
-	if main == nil {
+	if m.status.Snapshot == nil {
 		return padLines([]string{title, "", mutedStyle.Render("  sem snapshot consolidado"), ""}, height, m.width)
 	}
 	mapRows := height - 4
@@ -576,14 +625,68 @@ func (m *Model) mapBody(height int) []string {
 	if width < 40 {
 		width = 40
 	}
-	logicalHeight := mapRows * 2
-	if err := m.ensureMapGrid(width, logicalHeight); err != nil {
+	grid, err := m.renderMapGrid(width, mapRows)
+	if err != nil {
 		return padLines([]string{title, "", badStyle.Render("  " + fit(err.Error(), m.width-4)), "", mutedStyle.Render("m/esc fechar")}, height, m.width)
 	}
-	colors := make(map[string]lipgloss.Color, len(main.Candidates))
-	for i, c := range main.Candidates {
-		colors[c.Number] = mapPalette[i%len(mapPalette)]
+	lines := []string{title}
+	for _, line := range grid {
+		lines = append(lines, center(line, m.width))
 	}
+	lines = append(lines, m.mapLegend(m.width, false))
+	note := "Cinza = sem votos · cor = candidato com mais votos na UF · "
+	if !mv.FetchedAt.IsZero() {
+		note += "carregado " + format.Relative(mv.FetchedAt, time.Now())
+	}
+	lines = append(lines, mutedStyle.Render("  "+fit(note, m.width-4)))
+	lines = append(lines, mutedStyle.Render("  m/esc fechar · o consolidado Brasil continua sendo monitorado"))
+	return padLines(lines, height, m.width)
+}
+
+func (m *Model) mapPanel(width, height int) []string {
+	title := panelTitle("MAPA — UF VENCEDORA", width)
+	mv := m.status.Map
+	if mv == nil || mv.Loading {
+		return padLines([]string{title, mutedStyle.Render(fit("  carregando 27 UFs…", width)), ""}, height, width)
+	}
+	if mv.Error != "" {
+		return padLines([]string{title, badStyle.Render(fit("  mapa indisponível", width)), mutedStyle.Render(fit("  m para detalhes", width))}, height, width)
+	}
+	if m.status.Snapshot == nil {
+		return padLines([]string{title, mutedStyle.Render(fit("  sem snapshot", width))}, height, width)
+	}
+	rows := height - 2
+	if rows < 3 {
+		rows = 3
+	}
+	grid, err := m.renderMapGrid(width, rows)
+	if err != nil {
+		return padLines([]string{title, badStyle.Render(fit("  "+err.Error(), width))}, height, width)
+	}
+	lines := []string{title}
+	for _, line := range grid {
+		lines = append(lines, center(line, width))
+	}
+	lines = append(lines, m.mapLegend(width, true))
+	return padLines(lines, height, width)
+}
+
+func (m *Model) mapColors() map[string]lipgloss.Color {
+	colors := make(map[string]lipgloss.Color)
+	if main := m.status.Snapshot; main != nil {
+		for _, c := range main.Candidates {
+			colors[c.Number] = lipgloss.Color(chart.CandidateColorHex(c))
+		}
+	}
+	return colors
+}
+
+func (m *Model) renderMapGrid(width, rows int) ([]string, error) {
+	if err := m.ensureMapGrid(width, rows*2); err != nil {
+		return nil, err
+	}
+	mv := m.status.Map
+	colors := m.mapColors()
 	colorFor := func(uf string) lipgloss.Color {
 		if uf == "" {
 			return mapOcean
@@ -613,8 +716,8 @@ func (m *Model) mapBody(height int) []string {
 		cache[key] = s
 		return s
 	}
-	lines := []string{title}
-	for row := 0; row < mapRows && row*2+1 < len(m.mapGrid); row++ {
+	lines := make([]string, 0, rows)
+	for row := 0; row < rows && row*2+1 < len(m.mapGrid); row++ {
 		var b strings.Builder
 		topRow := m.mapGrid[row*2]
 		bottomRow := m.mapGrid[row*2+1]
@@ -628,28 +731,34 @@ func (m *Model) mapBody(height int) []string {
 			}
 			b.WriteString(cell(top, bottom))
 		}
-		lines = append(lines, center(b.String(), m.width))
+		lines = append(lines, b.String())
 	}
-	var legend []string
+	return lines, nil
+}
+
+func (m *Model) mapLegend(width int, compact bool) string {
+	main := m.status.Snapshot
+	if main == nil {
+		return ""
+	}
+	colors := m.mapColors()
+	parts := make([]string, 0, 4)
 	for i, c := range main.Candidates {
 		if i >= 4 {
 			break
+		}
+		name := c.DisplayName()
+		if compact {
+			name = format.Truncate(name, 8)
 		}
 		pct := c.PercentText
 		if pct == "" {
 			pct = format.PercentNano(c.PercentNano)
 		}
 		swatch := lipgloss.NewStyle().Foreground(colors[c.Number]).Render("■")
-		legend = append(legend, swatch+" "+c.DisplayName()+" "+pct+"%")
+		parts = append(parts, swatch+" "+name+" "+pct+"%")
 	}
-	lines = append(lines, "  "+strings.Join(legend, "   "))
-	note := "Cinza = sem votos · cor = candidato com mais votos na UF · "
-	if !mv.FetchedAt.IsZero() {
-		note += "carregado " + format.Relative(mv.FetchedAt, time.Now())
-	}
-	lines = append(lines, mutedStyle.Render("  "+fit(note, m.width-4)))
-	lines = append(lines, mutedStyle.Render("  m/esc fechar · o consolidado Brasil continua sendo monitorado"))
-	return padLines(lines, height, m.width)
+	return fit("  "+strings.Join(parts, "   "), width)
 }
 
 func (m *Model) helpBody(height int) []string {
