@@ -1,0 +1,31 @@
+{
+  "election": "6258",
+  "contest": "1",
+  "uf": "br",
+  "pollInterval": "120s",
+  "httpTimeout": "20s",
+  "configTtl": "30m",
+  "minBackoff": "5s",
+  "maxBackoff": "5m",
+  "maxRetries": 2,
+  "maxFailures": 3,
+  "retentionEvents": 200,
+  "statePath": "./data/state.json",
+  "logLevel": "info",
+  "logFormat": "text",
+  "tui": true,
+  "timezone": "America/Sao_Paulo",
+  "tseBaseUrl": "https://resultados.tse.jus.br",
+  "tseEnvironment": "oficial",
+  "telegram": {
+    "enabled": false,
+    "botToken": "",
+    "chatId": "",
+    "apiBase": "https://api.telegram.org",
+    "baseline": true,
+    "failureAlerts": true,
+    "recoveryAlerts": true,
+    "maxAttempts": 8,
+    "baseBackoff": "5s"
+  }
+}

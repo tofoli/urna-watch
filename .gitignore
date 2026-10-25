@@ -1,0 +1,23 @@
+# Runtime data (state, logs, local volumes)
+/bin/
+/data/
+*.log
+*.out
+coverage.out
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+config.local.json
+*.local.json
+
+# Editor/OS noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Go build/test artifacts
+/tmp/
+dist/

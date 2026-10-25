@@ -1,0 +1,16 @@
+
+{ "ele" : "6284", "t" : "1", "f" : "o", "sup" : "s", "tpabr" : "mu", "cdabr" : "67458", "dg" : "25/10/2026", "hg" : "15:48:55", "idg" : "3948322", "dt" : "", "ht" : "", "dv" : "s", "tf" : "n", "and" : "n", "carg" : [ 
+{ "cd" : "11", "nmn" : "Prefeito", "nmm" : "Prefeito", "nmf" : "Prefeita", "nv" : "1", "fed" : [ 
+{ "n" : "103", "sg" : "25-PRD/77-SOLIDARIEDADE", "nm" : "FEDERAÇÃO RENOVAÇÃO SOLIDÁRIA", "com" : "25-PRD/77-SOLIDARIEDADE", "npar" : [ "25", "77" ] }, 
+{ "n" : "104", "sg" : "44-UNIÃO/11-PP", "nm" : "FEDERAÇÃO UNIÃO PROGRESSISTA", "com" : "44-UNIÃO/11-PP", "npar" : [ "11", "44" ] } ], "agr" : [ 
+{ "n" : "250001801967", "nm" : "CONSTRUINDO UM NOVO TEMPO", "tp" : "c", "com" : "PSB / PRD / SOLIDARIEDADE", "tvtn" : "0", "tvan" : "0", "par" : [ 
+{ "n" : "25", "sg" : "PRD", "nm" : "PARTIDO RENOVACAO DEMOCRATICA", "nfed" : "103", "tvtn" : "0", "tvan" : "0", "cand" : [ 
+{ "n" : "25", "sqcand" : "250002554644", "nm" : "PEDRO DE BARROS", "nmu" : "PEDRINHO", "dt" : "29/06/1980", "seq" : "2", "e" : "n", "st" : "", "vap" : "0", "pvap" : "0,00", "pvapn" : "0", "vs" : [ 
+{ "tp" : "v", "sqcand" : "250002554643", "nm" : "LUIZ CARLOS PORTO MARTINS", "nmu" : "LUIZ CARLOS CONSTRUTOR", "sgp" : "PSB" } ] } ] } ] }, 
+{ "n" : "250001801947", "nm" : "PARA NARANDIBA VOLTAR A SORRIR", "tp" : "c", "com" : "PSD / PP / UNIÃO", "tvtn" : "0", "tvan" : "0", "par" : [ 
+{ "n" : "44", "sg" : "UNIÃO", "nm" : "UNIÃO BRASIL", "nfed" : "104", "tvtn" : "0", "tvan" : "0", "cand" : [ 
+{ "n" : "44", "sqcand" : "250002554763", "nm" : "CLAUDIO JOSE DAMACENA", "nmu" : "CLAUDIAO DAMACENA", "dt" : "02/03/1967", "seq" : "1", "e" : "n", "st" : "", "vap" : "0", "pvap" : "0,00", "pvapn" : "0", "vs" : [ 
+{ "tp" : "v", "sqcand" : "250002554624", "nm" : "ELDER MAGRO", "nmu" : "ELDER PAPADA", "sgp" : "PSD" } ] } ] } ] } ] } ], "s" : 
+{ "ts" : "13", "st" : "0", "pst" : "0,00", "pstn" : "0", "snt" : "13", "psnt" : "100,00", "psntn" : "100", "si" : "0", "psi" : "0,00", "psin" : "0", "sni" : "0", "psni" : "0,00", "psnin" : "0", "sa" : "0", "psa" : "0,00", "psan" : "0", "sna" : "0", "psna" : "0,00", "psnan" : "0" }, "e" : 
+{ "te" : "4457", "est" : "0", "pest" : "0,00", "pestn" : "0", "esnt" : "4457", "pesnt" : "100,00", "pesntn" : "100", "esi" : "0", "pesi" : "0,00", "pesin" : "0", "esni" : "0", "pesni" : "0,00", "pesnin" : "0", "esa" : "0", "pesa" : "0,00", "pesan" : "0", "esna" : "0", "pesna" : "0,00", "pesnan" : "0", "c" : "0", "pc" : "0,00", "pcn" : "0", "a" : "0", "pa" : "0,00", "pan" : "0" }, "v" : 
+{ "tv" : "0", "vvc" : "0", "pvvc" : "0,00", "pvvcn" : "0", "vv" : "0", "pvv" : "0,00", "pvvn" : "0", "vnom" : "0", "pvnom" : "0,00", "pvnomn" : "0", "van" : "0", "pvan" : "0,00", "pvann" : "0", "vansj" : "0", "pvansj" : "0,00", "pvansjn" : "0", "vb" : "0", "pvb" : "0,00", "pvbn" : "0", "tvn" : "0", "ptvn" : "0,00", "ptvnn" : "0", "vn" : "0", "pvn" : "0,00", "pvnn" : "0", "vnt" : "0", "pvnt" : "0,00", "pvntn" : "0", "vsan" : "0", "vscv" : "0" } }

@@ -1,0 +1,12 @@
+.git
+.github
+bin
+data
+.env
+.env.*
+*.log
+coverage.out
+docs
+tests
+config.local.json
+*.local.json
