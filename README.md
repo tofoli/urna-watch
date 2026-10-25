@@ -160,6 +160,12 @@ leitura e **não** altera a linha de base, os eventos nem as notificações do
 consolidado Brasil. Ela pode ficar defasada em relação ao consolidado; o painel
 mostra o horário da carga e a fonte.
 
+Para consultar uma UF fora da TUI (inclusive com o Docker rodando o consolidado):
+
+```sh
+URNA_UF=sp ./bin/urna-watch --once --no-tui --no-telegram
+```
+
 A coleta, a persistência e o Telegram continuam em goroutines próprias; a TUI
 apenas lê um snapshot imutável. Em terminal sem TTY, o modo headless é usado.
 
