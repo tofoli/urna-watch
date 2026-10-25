@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gpu/urna-watch/internal/domain"
-	"github.com/gpu/urna-watch/internal/telegram"
+	"github.com/tofoli/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/telegram"
 )
 
 func sampleSnapshot() *domain.Snapshot {

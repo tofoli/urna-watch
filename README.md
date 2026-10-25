@@ -12,6 +12,13 @@ em servidores e containers.
 > [`docs/research/tse-data-source.md`](docs/research/tse-data-source.md) antes
 > de operar em produção.
 
+[![CI](https://github.com/tofoli/urna-watch/actions/workflows/ci.yml/badge.svg)](https://github.com/tofoli/urna-watch/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/tofoli/urna-watch)](https://github.com/tofoli/urna-watch/releases)
+[![Go](https://img.shields.io/badge/go-1.27%2B-00ADD8)](https://go.dev/)
+[![License](https://img.shields.io/github/license/tofoli/urna-watch)](LICENSE)
+
+![TUI do Urna Watch com tabela, mapa por UF e painel de disputa](docs/images/urna-watch-print.png)
+
 ## O que já foi validado
 
 - Fonte oficial 2026: config comum, 1º turno, 2º turno federal, 2º turno
@@ -46,7 +53,34 @@ em servidores e containers.
 - Opcional: Docker/Compose, `golangci-lint` 2.x.
 - Acesso HTTPS a `resultados.tse.jus.br` e (se habilitado) `api.telegram.org`.
 
-## Início rápido
+## Instalação
+
+### Imagem Docker (GitHub Container Registry)
+
+```sh
+docker pull ghcr.io/tofoli/urna-watch:0.1.0
+
+# headless, com estado persistente e endpoint local de status
+docker run -d --name urna-watch --restart unless-stopped \
+  -v urna-data:/app/data \
+  -p 127.0.0.1:8080:8080 \
+  --env-file .env \
+  ghcr.io/tofoli/urna-watch:0.1.0
+```
+
+Para abrir a TUI em um terminal interativo:
+
+```sh
+docker run --rm -it -v urna-data:/app/data \
+  -e URNA_TUI=true --env-file .env \
+  ghcr.io/tofoli/urna-watch:0.1.0
+```
+
+Binários Linux amd64/arm64 e notas de versão ficam em
+[Releases](https://github.com/tofoli/urna-watch/releases). A imagem também é
+publicada como `ghcr.io/tofoli/urna-watch:latest`.
+
+### Do código-fonte
 
 ```sh
 cp .env.example .env       # ajuste; NÃO versione .env
@@ -220,7 +254,7 @@ apenas lê um snapshot imutável. Em terminal sem TTY, o modo headless é usado.
 
 ```sh
 cp .env.example .env   # opcional; sem .env o compose usa os padrões
-docker compose up -d --build
+docker compose up -d --build   # constrói a imagem local do repositório
 docker compose logs -f
 curl -sS http://127.0.0.1:8080/healthz
 curl -sS http://127.0.0.1:8080/status | jq '{paused, poll, telegram, snapshot: .snapshot.sourceVersion}'
@@ -298,16 +332,25 @@ um pipeline completo com servidores simulados.
 - O mapa do Telegram depende de 27 arquivos de UF e pode refletir uma geração
   ligeiramente diferente do consolidado Brasil. Ele mostra a UF com mais votos
   por candidato; não é projeção nem declaração de eleito.
-- A variação “desde o snapshot anterior” some após reinício (não é persistida
-  como histórico de deltas; o snapshot e os eventos são).
+- A variação “desde o snapshot anterior” reseta após reinício; o histórico do
+  painel de disputa é persistido (até 240 pontos), mas começa a acumular a
+  partir da primeira execução desta versão.
 - Município: URL validada, mas a coerência código↔UF é delegada ao 404 da fonte.
-- Não há release/publicação automática; versionamento é manual.
+- Releases e imagens Docker são gerados por tag `v*` no GitHub Actions
+  (`.github/workflows/release.yml`).
 
 ## Segurança
 
 Leia [`docs/security.md`](docs/security.md). Em resumo: não versione `.env`,
 nunca registre tokens, trate JSON externo como não confiável, use HTTPS,
 mantenha o container sem privilégios e faça backup do estado antes de mudanças.
+
+## Repositório
+
+- Código: https://github.com/tofoli/urna-watch
+- Releases: https://github.com/tofoli/urna-watch/releases
+- Imagem: `ghcr.io/tofoli/urna-watch`
+- Issues: https://github.com/tofoli/urna-watch/issues
 
 ## Licença
 

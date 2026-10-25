@@ -3,9 +3,9 @@ package observability
 import (
 	"time"
 
-	"github.com/gpu/urna-watch/internal/domain"
-	"github.com/gpu/urna-watch/internal/notification"
-	"github.com/gpu/urna-watch/internal/polling"
+	"github.com/tofoli/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/notification"
+	"github.com/tofoli/urna-watch/internal/polling"
 )
 
 // SourceStatus is the last observed state of the official source request.

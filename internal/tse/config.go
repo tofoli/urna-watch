@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gpu/urna-watch/internal/domain"
-	"github.com/gpu/urna-watch/internal/format"
+	"github.com/tofoli/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/format"
 )
 
 // wireConfig is the subset of /comum/config/ele-c.json that this project uses.

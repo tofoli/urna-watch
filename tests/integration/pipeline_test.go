@@ -16,11 +16,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gpu/urna-watch/internal/app"
-	"github.com/gpu/urna-watch/internal/config"
-	"github.com/gpu/urna-watch/internal/domain"
-	"github.com/gpu/urna-watch/internal/observability"
-	"github.com/gpu/urna-watch/internal/store"
+	"github.com/tofoli/urna-watch/internal/app"
+	"github.com/tofoli/urna-watch/internal/config"
+	"github.com/tofoli/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/observability"
+	"github.com/tofoli/urna-watch/internal/store"
 )
 
 const (

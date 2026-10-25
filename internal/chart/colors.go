@@ -5,7 +5,7 @@ import (
 	"image/color"
 	"strings"
 
-	"github.com/gpu/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/domain"
 )
 
 // Candidate colors are stable by candidate identity, not by current position.

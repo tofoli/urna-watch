@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/gpu/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/domain"
 )
 
 const StateVersion = 1

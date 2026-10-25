@@ -2,7 +2,7 @@ services:
   urna-watch:
     build:
       context: .
-    image: urna-watch:local
+    image: ghcr.io/tofoli/urna-watch:latest
     init: true
     restart: unless-stopped
     stop_grace_period: 30s

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gpu/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/domain"
 )
 
 func testConfig(t *testing.T) *wireConfig {

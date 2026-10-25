@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gpu/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/domain"
 )
 
 func baseSnapshot() *domain.Snapshot {

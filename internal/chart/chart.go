@@ -13,8 +13,8 @@ import (
 	"image/png"
 	"strings"
 
-	"github.com/gpu/urna-watch/internal/domain"
-	"github.com/gpu/urna-watch/internal/format"
+	"github.com/tofoli/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/format"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gobold"
 	"golang.org/x/image/font/gofont/goregular"

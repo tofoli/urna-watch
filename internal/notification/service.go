@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gpu/urna-watch/internal/domain"
-	"github.com/gpu/urna-watch/internal/store"
-	"github.com/gpu/urna-watch/internal/telegram"
+	"github.com/tofoli/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/store"
+	"github.com/tofoli/urna-watch/internal/telegram"
 )
 
 // Sender is the subset of the Telegram client needed by the outbox worker.

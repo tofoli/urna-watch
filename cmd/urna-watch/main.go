@@ -15,15 +15,15 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	"github.com/gpu/urna-watch/internal/app"
-	"github.com/gpu/urna-watch/internal/config"
-	"github.com/gpu/urna-watch/internal/detector"
-	"github.com/gpu/urna-watch/internal/domain"
-	"github.com/gpu/urna-watch/internal/format"
-	"github.com/gpu/urna-watch/internal/observability"
-	"github.com/gpu/urna-watch/internal/tse"
-	"github.com/gpu/urna-watch/internal/tui"
-	"github.com/gpu/urna-watch/internal/version"
+	"github.com/tofoli/urna-watch/internal/app"
+	"github.com/tofoli/urna-watch/internal/config"
+	"github.com/tofoli/urna-watch/internal/detector"
+	"github.com/tofoli/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/format"
+	"github.com/tofoli/urna-watch/internal/observability"
+	"github.com/tofoli/urna-watch/internal/tse"
+	"github.com/tofoli/urna-watch/internal/tui"
+	"github.com/tofoli/urna-watch/internal/version"
 )
 
 func main() {

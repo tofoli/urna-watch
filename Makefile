@@ -5,9 +5,9 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -s -w \
-	-X github.com/gpu/urna-watch/internal/version.Version=$(VERSION) \
-	-X github.com/gpu/urna-watch/internal/version.Commit=$(COMMIT) \
-	-X github.com/gpu/urna-watch/internal/version.Date=$(BUILD_DATE)
+	-X github.com/tofoli/urna-watch/internal/version.Version=$(VERSION) \
+	-X github.com/tofoli/urna-watch/internal/version.Commit=$(COMMIT) \
+	-X github.com/tofoli/urna-watch/internal/version.Date=$(BUILD_DATE)
 
 .PHONY: all build test test-race cover lint fmt fmt-check check run once validate docker-build docker-up docker-down clean
 

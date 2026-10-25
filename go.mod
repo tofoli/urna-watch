@@ -1,4 +1,4 @@
-module github.com/gpu/urna-watch
+module github.com/tofoli/urna-watch
 
 go 1.27.3
 

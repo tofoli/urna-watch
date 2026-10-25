@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gpu/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/domain"
 )
 
 // Duration is a time.Duration that unmarshals from strings such as "120s".
@@ -146,7 +146,7 @@ func Default() Config {
 		LogFormat:       "text",
 		TUI:             true,
 		Timezone:        "America/Sao_Paulo",
-		UserAgent:       "urna-watch/0.1 (+https://github.com/gpu/urna-watch; monitor de resultados oficiais)",
+		UserAgent:       "urna-watch/0.1 (+https://github.com/tofoli/urna-watch; monitor de resultados oficiais)",
 		TSEBaseURL:      "https://resultados.tse.jus.br",
 		TSEEnvironment:  "oficial",
 		Telegram: Telegram{

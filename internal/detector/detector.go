@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gpu/urna-watch/internal/domain"
-	"github.com/gpu/urna-watch/internal/format"
+	"github.com/tofoli/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/format"
 )
 
 // Compare returns the meaningful differences between prev and cur.

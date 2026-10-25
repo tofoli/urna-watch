@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gpu/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/domain"
 )
 
 func fixture(t *testing.T, name string) []byte {

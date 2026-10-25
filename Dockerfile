@@ -10,9 +10,9 @@ ARG COMMIT=docker
 ARG BUILD_DATE=unknown
 RUN CGO_ENABLED=0 go build -trimpath \
     -ldflags "-s -w \
-      -X github.com/gpu/urna-watch/internal/version.Version=${VERSION} \
-      -X github.com/gpu/urna-watch/internal/version.Commit=${COMMIT} \
-      -X github.com/gpu/urna-watch/internal/version.Date=${BUILD_DATE}" \
+      -X github.com/tofoli/urna-watch/internal/version.Version=${VERSION} \
+      -X github.com/tofoli/urna-watch/internal/version.Commit=${COMMIT} \
+      -X github.com/tofoli/urna-watch/internal/version.Date=${BUILD_DATE}" \
     -o /out/urna-watch ./cmd/urna-watch
 
 FROM alpine:3.22

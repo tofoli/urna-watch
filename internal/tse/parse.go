@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gpu/urna-watch/internal/domain"
-	"github.com/gpu/urna-watch/internal/format"
+	"github.com/tofoli/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/format"
 )
 
 type wireResult struct {

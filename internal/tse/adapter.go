@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gpu/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/domain"
 )
 
 const (
@@ -92,7 +92,7 @@ func NewAdapter(opt Options) (*Adapter, error) {
 	}
 	ua := strings.TrimSpace(opt.UserAgent)
 	if ua == "" {
-		ua = "urna-watch/0.1 (+https://github.com/gpu/urna-watch; monitor de resultados oficiais)"
+		ua = "urna-watch/0.1 (+https://github.com/tofoli/urna-watch; monitor de resultados oficiais)"
 	}
 	hc := opt.HTTPClient
 	if hc == nil {

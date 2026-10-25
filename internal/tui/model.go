@@ -9,11 +9,11 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/gpu/urna-watch/internal/chart"
-	"github.com/gpu/urna-watch/internal/config"
-	"github.com/gpu/urna-watch/internal/domain"
-	"github.com/gpu/urna-watch/internal/observability"
-	"github.com/gpu/urna-watch/internal/tse"
+	"github.com/tofoli/urna-watch/internal/chart"
+	"github.com/tofoli/urna-watch/internal/config"
+	"github.com/tofoli/urna-watch/internal/domain"
+	"github.com/tofoli/urna-watch/internal/observability"
+	"github.com/tofoli/urna-watch/internal/tse"
 )
 
 // Source is implemented by the application.
